@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LIFF 初始化測試</title>
+  <script src="https://static.line-scdn.net/liff/sdk/v2/liff.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #status { margin-top: 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>LIFF 初始化測試頁</h1>
+  <div id="status">初始化中…</div>
+
+  <script>
+    const LIFF_ID = '2008665315-5OyO4lWE'; // 替換成你的 LIFF ID
+    const statusDiv = document.getElementById('status');
+
+    if (!LIFF_ID || LIFF_ID === 'PLACEHOLDER_LIFF_ID') {
+      statusDiv.textContent = '⚠️ 請先設定 LIFF ID';
+    } else {
+      liff.init({ liffId: LIFF_ID })
+        .then(() => {
+          if (!liff.isLoggedIn()) {
+            statusDiv.textContent = '尚未登入，將跳轉 LINE 登入…';
+            liff.login();
+          } else {
+            return liff.getProfile()
+              .then(profile => {
+                statusDiv.innerHTML = `
+                  ✅ LIFF 初始化成功！<br>
+                  User ID: <b>${profile.userId}</b><br>
+                  Display Name: <b>${profile.displayName}</b>
+                `;
+              });
+          }
+        })
+        .catch(err => {
+          statusDiv.innerHTML = '❌ LIFF 初始化失敗：' + err.message;
+          console.error(err);
+        });
+    }
+  </script>
+</body>
+</html>
