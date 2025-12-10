@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>活動報名表</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    /* === CSS 樣式區 === */
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; color: #333; }
+    .container { max-width: 500px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #06c755; margin-bottom: 20px; }
+    
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; font-size: 16px; -webkit-appearance: none; } /* -webkit-appearance 避免 iOS 預設樣式 */
+    
+    /* 動態產生的來賓欄位樣式 */
+    .guest-input { margin-top: 10px; background-color: #f9f9f9; border-color: #eee; }
+    
+    .btn-submit { width: 100%; background-color: #06c755; color: white; border: none; padding: 15px; font-size: 18px; border-radius: 5px; cursor: pointer; margin-top: 20px; font-weight: bold; }
+    .btn-submit:disabled { background-color: #ccc; }
+    
+    /* 載入中遮罩 */
+    #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 999; flex-direction: column; }
+    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #06c755; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 10px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    .hidden { display: none; }
+    .error-msg { color: red; font-size: 14px; margin-top: 5px; display: none; }
+  </style>
+</head>
+<body>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <div id="loadingText">系統讀取中...</div>
+  </div>
+
+  <div class="container" id="mainForm" style="display:none;">
+    <h2 id="formTitle">活動報名</h2>
+    
+    <form id="bookingForm">
+      <input type="hidden" id="userId" name="userId">
+      
+      <div class="form-group">
+        <label for="realName">您的真實姓名 <span style="color:red">*</span></label>
+        <input type="text" id="realName" placeholder="請輸入姓名" required>
+      </div>
+
+      <div class="form-group">
+        <label for="count">報名總人數 (含自己)</label>
+        <select id="count" onchange="generateGuestInputs()">
+          <option value="1">1 人</option>
+          <option value="2">2 人</option>
+          <option value="3">3 人</option>
+          <option value="4">4 人</option>
+          <option value="5">5 人</option>
+          <option value="6">6 人</option>
+          <option value="7">7 人</option>
+          <option value="8">8 人</option>
+          <option value="9">9 人</option>
+          <option value="10">10 人</option>
+        </select>
+      </div>
+
+      <div id="guestsContainer"></div>
+
+      <button type="submit" class="btn-submit" id="submitBtn">確認送出</button>
+      <div id="errorMsg" class="error-msg"></div>
+    </form>
+  </div>
+
+  <script>
+    // ==========================================
+    // ▼ 設定區 (請修改這裡) ▼
+    // ==========================================
+    const LIFF_ID = 'YOUR_LIFF_ID_HERE'; // 請填入你的 LIFF ID
+    const GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycby0Vy-RJXUV7RB-OHr6ivpQfqn978jx5UuCO3cnOaXzL68b-Ikl2fN8V79O9V5TGnr0/exec'; // 請填入 GAS 部署後的 Web App URL
+    // ==========================================
+
+    let currentGuestData = []; // 暫存讀取到的來賓資料
+
+    // 1. 初始化 LIFF
+    window.onload = function() {
+      liff.init({ liffId: LIFF_ID })
+        .then(() => {
+          if (!liff.isLoggedIn()) {
+            liff.login();
+          } else {
+            // 取得 User ID 並開始流程
+            liff.getProfile()
+              .then(profile => {
+                document.getElementById('userId').value = profile.userId;
+                fetchUserData(profile.userId); // 呼叫後端讀取資料
+              })
+              .catch(err => {
+                console.error(err);
+                showError("無法取得使用者資訊");
+              });
+          }
+        })
+        .catch(err => {
+          console.error('LIFF Init failed', err);
+          showError("LIFF 初始化失敗，請檢查 LIFF ID");
+        });
+    };
+
+    // 2. 呼叫 GAS 讀取使用者舊資料 (查詢/修改模式)
+    function fetchUserData(userId) {
+      const url = `${GAS_EXEC_URL}?action=getUser&userId=${userId}`;
+      
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          // 填入真實姓名
+          if (data.realName) {
+            document.getElementById('realName').value = data.realName;
+          }
+
+          // 如果有正在進行的報名 (修改模式)
+          if (data.currentBooking) {
+            document.getElementById('formTitle').innerText = "修改報名資料";
+            document.getElementById('submitBtn').innerText = "確認修改";
+            document.getElementById('count').value = data.currentBooking.count;
+            currentGuestData = data.currentBooking.guests || []; // 存入全域變數
+          }
+          
+          // 初始化畫面完成
+          generateGuestInputs(); // 產生欄位並填入舊資料
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('mainForm').style.display = 'block';
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('mainForm').style.display = 'block';
+        });
+    }
+
+    // 3. 動態產生來賓輸入框
+    function generateGuestInputs() {
+      const count = parseInt(document.getElementById('count').value);
+      const container = document.getElementById('guestsContainer');
+      
+      // 暫存目前畫面上已經輸入的來賓名字 (避免切換人數時資料清空)
+      // 但如果是剛載入頁面，則使用 currentGuestData (來自資料庫)
+      const currentInputs = container.querySelectorAll('input');
+      let tempNames = [];
+      if (currentInputs.length > 0) {
+        currentInputs.forEach(input => tempNames.push(input.value));
+      } else {
+        tempNames = currentGuestData;
+      }
+
+      container.innerHTML = ''; // 清空容器
+
+      // 產生 (人數 - 1) 個輸入框
+      for (let i = 0; i < count - 1; i++) {
+        const div = document.createElement('div');
+        div.className = 'form-group';
+        
+        const label = document.createElement('label');
+        label.innerText = `來賓 ${i + 1} 姓名`;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'guest-input';
+        input.placeholder = '請輸入來賓姓名';
+        input.name = 'guestName';
+        
+        // 嘗試填回舊資料
+        if (tempNames[i]) {
+          input.value = tempNames[i];
+        }
+
+        div.appendChild(label);
+        div.appendChild(input);
+        container.appendChild(div);
+      }
+    }
+
+    // 4. 表單送出
+    document.getElementById('bookingForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerText = "處理中...";
+
+      // 蒐集資料
+      const userId = document.getElementById('userId').value;
+      const realName = document.getElementById('realName').value;
+      const count = document.getElementById('count').value;
+      
+      // 蒐集所有來賓名字
+      const guestInputs = document.querySelectorAll('input[name="guestName"]');
+      let guests = [];
+      guestInputs.forEach(input => {
+        if(input.value.trim() !== "") guests.push(input.value.trim());
+      });
+
+      const payload = {
+        action: 'submit_form',
+        userId: userId,
+        realName: realName,
+        count: count,
+        guests: guests
+      };
+
+      // 使用 fetch 送到 GAS (POST)
+      // 注意：GAS Web App 需要用 text/plain 避免 CORS preflight 問題，但後端要能 parse
+      fetch(GAS_EXEC_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(response => {
+        if (response.result === 'success') {
+          liff.closeWindow(); // 成功後關閉視窗
+        } else {
+          showError("報名失敗，請稍後再試");
+          submitBtn.disabled = false;
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showError("網路錯誤，請檢查連線");
+        submitBtn.disabled = false;
+      });
+    });
+
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.innerText = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
