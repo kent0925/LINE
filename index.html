@@ -1,54 +1,151 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>活動報名系統</title>
-    <link rel="stylesheet" href="style.css">
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>活動報名表單</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f4f4f9; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .info-box { background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .info-item { margin-bottom: 8px; }
+        .info-label { font-weight: bold; }
+        label { display: block; margin-top: 15px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; background-color: #28a745; color: white; padding: 12px; border: none; border-radius: 4px; margin-top: 20px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #218838; }
+        button:disabled { background-color: #ccc; }
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>每月餐會報名</h2>
-    <hr>
+    <h2 id="eventTitle">載入中...</h2>
+    
+    <div class="info-box" id="eventInfo">
+        <div class="info-item"><span class="info-label">主辦人：</span> <span id="organizer">...</span></div>
+        <div class="info-item"><span class="info-label">時間：</span> <span id="time">...</span></div>
+        <div class="info-item"><span class="info-label">地點：</span> <span id="location">...</span></div>
+        <div class="info-item" id="mapLinkBox"></div>
+    </div>
 
-    <h3>我的報名資料</h3>
+    <form id="signupForm">
+        <label for="lineName">參加人姓名 (LINE)</label>
+        <input type="text" id="lineName" readonly placeholder="讀取中...">
 
-    <div class="form-group">
-                <label for="userName">LINE 暱稱</label>
-                <input type="text" id="userName" value="LIFF_USER_ID" readonly>
-    </div>
+        <label for="count">參加人數 (含本人)</label>
+        <select id="count">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+        </select>
 
-    <div class="form-group">
-        <label for="attendeesCount">報名人數</label>
-        <select id="attendeesCount">
-            <option value="1">1 人 (含本人)</option>
-            <option value="2">2 人</option>
-            <option value="3">3 人</option>
-            <option value="4">4 人</option>
-            <option value="5">5 人</option>
-        </select>
-    </div>
+        <label for="guests">其他來賓姓名 (選填，請用逗號分隔)</label>
+        <textarea id="guests" rows="3" placeholder="例如：王小明, 李大華"></textarea>
 
-    <div id="guestSection" style="display: none;">
-        <h4>來賓名單 (請輸入來賓姓名)</h4>
-        <div id="guestInputs">
-            </div>
-    </div>
-
-    <hr>
-
-    <div class="actions">
-        <button id="submitBtn" class="primary-btn">確認報名</button>
-        <button id="modifyBtn" class="secondary-btn" style="display:none;">修改報名</button>
-        <button id="cancelBtn" class="danger-btn" style="display:none;">取消報名</button>
-    </div>
-
-    <p id="statusMessage" class="status"></p>
-
+        <button type="submit" id="submitBtn" disabled>確認報名</button>
+    </form>
 </div>
 
-<script src="script.js"></script>
+<script>
+    // ================= 設定區 =================
+    const LIFF_ID = "2008678090-b1Up4o0J"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwg_wk38RPy9hrhB8TAirfq-91g03pevBV4h7ZvOOsVc_WhlnddMMA-9NqcnmIQDJ8P/exec";
+    // =========================================
+
+    // 初始化頁面
+    window.onload = async function() {
+        await initLIFF();
+        await fetchEventInfo();
+    };
+
+    // 1. 初始化 LINE LIFF 並取得使用者資料
+    async function initLIFF() {
+        try {
+            await liff.init({ liffId: LIFF_ID });
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                document.getElementById('lineName').value = profile.displayName;
+                document.getElementById('submitBtn').disabled = false; // 登入後才開啟按鈕
+            } else {
+                liff.login(); // 若未登入，強制登入
+            }
+        } catch (err) {
+            console.error('LIFF Error:', err);
+            alert('LINE 登入失敗，請檢查 LIFF ID 設定');
+        }
+    }
+
+    // 2. 從 Google Sheet 抓取活動資訊
+    async function fetchEventInfo() {
+        try {
+            const response = await fetch(GAS_URL);
+            const data = await response.json();
+
+            document.getElementById('eventTitle').innerText = data.Title || "未命名活動";
+            document.getElementById('organizer').innerText = data.Organizer || "未知";
+            document.getElementById('time').innerText = data.Time || "未定";
+            
+            // 處理地點與 Google Maps 連結
+            const loc = data.Location || "未定";
+            document.getElementById('location').innerText = loc;
+            
+            if (loc !== "未定") {
+                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
+                document.getElementById('mapLinkBox').innerHTML = `<a href="${mapUrl}" target="_blank" style="color:#007bff; text-decoration:none;">📍 開啟 Google 地圖</a>`;
+            }
+            
+        } catch (err) {
+            console.error('Fetch Error:', err);
+            document.getElementById('eventTitle').innerText = "無法讀取活動資訊";
+        }
+    }
+
+    // 3. 處理表單送出
+    document.getElementById('signupForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerText = "報名中...";
+
+        const formData = {
+            lineName: document.getElementById('lineName').value,
+            count: document.getElementById('count').value,
+            guests: document.getElementById('guests').value
+        };
+
+        // 使用 fetch 送出 POST 請求
+        // 注意：GAS Web App 需要用 text/plain 避免 CORS 預檢請求失敗，但在 GAS 端用 JSON.parse 解析
+        try {
+            await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify(formData),
+                mode: 'no-cors', // 重要：跨網域設定
+                headers: { 'Content-Type': 'text/plain' }
+            });
+
+            alert('報名成功！');
+            liff.closeWindow(); // 關閉 LIFF 視窗
+
+        } catch (err) {
+            console.error(err);
+            alert('報名發生錯誤，請稍後再試');
+            btn.disabled = false;
+            btn.innerText = "確認報名";
+        }
+    });
+</script>
+
 </body>
 </html>
