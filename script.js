@@ -17,7 +17,7 @@ const showMapBtn = document.getElementById('showMapBtn');
  */
 async function initializeLiff() {
     try {
-        await liff.init({ liffId: 'YOUR_LIFF_ID' }); // *** 請替換成您的 LIFF ID ***
+        await liff.init({ liffId: '2008678090-b1Up4o0J' }); // *** 請替換成您的 LIFF ID ***
 
         if (!liff.isLoggedIn()) {
             // 如果未登入，導向登入頁面
