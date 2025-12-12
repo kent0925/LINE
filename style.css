@@ -1,0 +1,101 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+h2, h3 {
+    color: #00b900; /* LINE 綠色 */
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-top: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input[type="text"], 
+input[type="datetime-local"],
+select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box; /* 確保 padding 不會增加寬度 */
+}
+
+input[readonly] {
+    background-color: #eee;
+    color: #666;
+}
+
+/* 按鈕樣式 */
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.primary-btn {
+    background-color: #00b900; /* 確認報名 */
+    color: white;
+}
+
+.secondary-btn {
+    background-color: #f0f0f0; /* 顯示地圖, 修改報名 */
+    color: #333;
+}
+
+.danger-btn {
+    background-color: #ff4d4d; /* 取消報名 */
+    color: white;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 20px;
+    flex-wrap: wrap; /* 換行 */
+}
+
+.status {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e6ffe6;
+    border: 1px solid #00b900;
+    color: #00b900;
+    border-radius: 4px;
+    text-align: center;
+}
+
+#showMapBtn {
+    margin-top: 10px;
+    width: 100%;
+}
+
+/* 來賓輸入框樣式 */
+#guestInputs input {
+    margin-bottom: 8px;
+}
