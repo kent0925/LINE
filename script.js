@@ -128,18 +128,16 @@ function updateGuestInputs() {
 }
 
 /**
- * 收集報名表單所有資料
+ * 收集報名表單所有資料 (移除活動的主旨、時間、地點)
  */
 function collectFormData(action) {
     const guests = Array.from(document.querySelectorAll('.guest-name-input')).map(input => input.value);
     
+    // 移除 eventSubject, eventTime, eventLocation
     return {
         action: action, 
         timestamp: new Date().toLocaleString('zh-TW'),
-        userId: userId, // *** 傳送原始 User ID 給 GAS 進行轉換和查找 ***
-        eventSubject: eventSubjectInput.value,
-        eventTime: eventTimeInput.value,
-        eventLocation: eventLocationInput.value,
+        userId: userId, 
         attendeesCount: attendeesCountSelect.value,
         guestNames: guests.join(', ')
     };
