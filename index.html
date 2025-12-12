@@ -14,10 +14,17 @@
         .info-label { font-weight: bold; }
         label { display: block; margin-top: 15px; font-weight: bold; }
         input, select, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; background-color: #28a745; color: white; padding: 12px; border: none; border-radius: 4px; margin-top: 20px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #218838; }
-        button:disabled { background-color: #ccc; }
-        .hidden { display: none; }
+        
+        /* 按鈕樣式區 */
+        .btn-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; color: white; }
+        
+        #signupBtn { background-color: #28a745; } /* 綠色 */
+        #updateBtn { background-color: #007bff; } /* 藍色 */
+        #cancelBtn { background-color: #dc3545; } /* 紅色 */
+        
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -25,18 +32,18 @@
 <div class="container">
     <h2 id="eventTitle">載入中...</h2>
     
-    <div class="info-box" id="eventInfo">
+    <div class="info-box">
         <div class="info-item"><span class="info-label">主辦人：</span> <span id="organizer">...</span></div>
         <div class="info-item"><span class="info-label">時間：</span> <span id="time">...</span></div>
         <div class="info-item"><span class="info-label">地點：</span> <span id="location">...</span></div>
         <div class="info-item" id="mapLinkBox"></div>
     </div>
 
-    <form id="signupForm">
-        <label for="lineName">參加人姓名 (LINE)</label>
+    <form id="mainForm">
+        <label>參加人姓名 (LINE)</label>
         <input type="text" id="lineName" readonly placeholder="讀取中...">
 
-        <label for="count">參加人數 (含本人)</label>
+        <label>參加人數 (含本人)</label>
         <select id="count">
             <option value="1">1</option>
             <option value="2">2</option>
@@ -50,101 +57,141 @@
             <option value="10">10</option>
         </select>
 
-        <label for="guests">其他來賓姓名 (選填，請用逗號分隔)</label>
+        <label>其他來賓姓名</label>
         <textarea id="guests" rows="3" placeholder="例如：王小明, 李大華"></textarea>
 
-        <button type="submit" id="submitBtn" disabled>確認報名</button>
+        <div class="btn-group">
+            <button type="button" id="signupBtn" class="hidden" onclick="handleSubmit('signup')">確認報名</button>
+            <button type="button" id="updateBtn" class="hidden" onclick="handleSubmit('update')">修改資料</button>
+            <button type="button" id="cancelBtn" class="hidden" onclick="handleSubmit('cancel')">取消報名</button>
+        </div>
     </form>
 </div>
 
 <script>
     // ================= 設定區 =================
     const LIFF_ID = "2008678090-b1Up4o0J"; 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwg_wk38RPy9hrhB8TAirfq-91g03pevBV4h7ZvOOsVc_WhlnddMMA-9NqcnmIQDJ8P/exec";
+    const GAS_URL = "填入你的GAS_URL";
     // =========================================
 
-    // 初始化頁面
     window.onload = async function() {
         await initLIFF();
-        await fetchEventInfo();
     };
 
-    // 1. 初始化 LINE LIFF 並取得使用者資料
     async function initLIFF() {
         try {
             await liff.init({ liffId: LIFF_ID });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
-                document.getElementById('lineName').value = profile.displayName;
-                document.getElementById('submitBtn').disabled = false; // 登入後才開啟按鈕
+                const userName = profile.displayName;
+                document.getElementById('lineName').value = userName;
+                
+                // 取得使用者名字後，去後端抓資料 (活動資訊 + 報名狀態)
+                await fetchData(userName);
             } else {
-                liff.login(); // 若未登入，強制登入
+                liff.login();
             }
         } catch (err) {
-            console.error('LIFF Error:', err);
-            alert('LINE 登入失敗，請檢查 LIFF ID 設定');
+            alert('LIFF 初始化失敗: ' + err);
         }
     }
 
-    // 2. 從 Google Sheet 抓取活動資訊
-    async function fetchEventInfo() {
+    // 整合讀取：抓活動資訊 + 檢查此人是否報名過
+    async function fetchData(userName) {
         try {
-            const response = await fetch(GAS_URL);
+            // 在網址後面加上參數 ?u=名字
+            const url = `${GAS_URL}?u=${encodeURIComponent(userName)}`;
+            const response = await fetch(url);
             const data = await response.json();
 
-            document.getElementById('eventTitle').innerText = data.Title || "未命名活動";
-            document.getElementById('organizer').innerText = data.Organizer || "未知";
-            document.getElementById('time').innerText = data.Time || "未定";
+            // 1. 填入活動資訊 (含時間格式化)
+            document.getElementById('eventTitle').innerText = data.Title || "活動";
+            document.getElementById('organizer').innerText = data.Organizer || "";
             
-            // 處理地點與 Google Maps 連結
-            const loc = data.Location || "未定";
-            document.getElementById('location').innerText = loc;
-            
-            if (loc !== "未定") {
-                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
-                document.getElementById('mapLinkBox').innerHTML = `<a href="${mapUrl}" target="_blank" style="color:#007bff; text-decoration:none;">📍 開啟 Google 地圖</a>`;
+            let displayTime = data.Time || "";
+            if (displayTime.includes('T')) {
+                displayTime = new Date(displayTime).toLocaleString('zh-TW', {
+                    year: 'numeric', month: '2-digit', day: '2-digit', 
+                    hour: '2-digit', minute: '2-digit', hour12: false
+                });
             }
+            document.getElementById('time').innerText = displayTime;
+            document.getElementById('location').innerText = data.Location || "";
             
+            if (data.Location) {
+                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.Location)}`;
+                document.getElementById('mapLinkBox').innerHTML = `<a href="${mapUrl}" target="_blank" style="color:#007bff;">📍 開啟地圖</a>`;
+            }
+
+            // 2. 判斷使用者狀態 (顯示對應按鈕)
+            if (data.userData) {
+                // 已報名過 -> 填入舊資料，顯示 修改/取消
+                document.getElementById('count').value = data.userData.count;
+                document.getElementById('guests').value = data.userData.guests;
+                
+                showButtons('edit'); // 顯示編輯模式
+            } else {
+                // 未報名 -> 顯示 報名按鈕
+                showButtons('new'); // 顯示新增模式
+            }
+
         } catch (err) {
-            console.error('Fetch Error:', err);
-            document.getElementById('eventTitle').innerText = "無法讀取活動資訊";
+            console.error(err);
+            alert("讀取資料失敗");
         }
     }
 
-    // 3. 處理表單送出
-    document.getElementById('signupForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
+    function showButtons(mode) {
+        const signupBtn = document.getElementById('signupBtn');
+        const updateBtn = document.getElementById('updateBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+
+        if (mode === 'edit') {
+            signupBtn.classList.add('hidden');
+            updateBtn.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+        } else {
+            signupBtn.classList.remove('hidden');
+            updateBtn.classList.add('hidden');
+            cancelBtn.classList.add('hidden');
+        }
+    }
+
+    // 統一處理送出 (action = signup / update / cancel)
+    async function handleSubmit(action) {
+        if (action === 'cancel' && !confirm("確定要取消報名嗎？")) return;
+
+        const btnId = action === 'signup' ? 'signupBtn' : (action === 'update' ? 'updateBtn' : 'cancelBtn');
+        const btn = document.getElementById(btnId);
+        const originalText = btn.innerText;
         
-        const btn = document.getElementById('submitBtn');
         btn.disabled = true;
-        btn.innerText = "報名中...";
+        btn.innerText = "處理中...";
 
         const formData = {
+            action: action, // 告訴後端要做什麼
             lineName: document.getElementById('lineName').value,
             count: document.getElementById('count').value,
             guests: document.getElementById('guests').value
         };
 
-        // 使用 fetch 送出 POST 請求
-        // 注意：GAS Web App 需要用 text/plain 避免 CORS 預檢請求失敗，但在 GAS 端用 JSON.parse 解析
         try {
             await fetch(GAS_URL, {
                 method: 'POST',
                 body: JSON.stringify(formData),
-                mode: 'no-cors', // 重要：跨網域設定
+                mode: 'no-cors',
                 headers: { 'Content-Type': 'text/plain' }
             });
 
-            alert('報名成功！');
-            liff.closeWindow(); // 關閉 LIFF 視窗
+            alert(action === 'cancel' ? '已取消報名' : '資料已送出！');
+            liff.closeWindow();
 
         } catch (err) {
-            console.error(err);
-            alert('報名發生錯誤，請稍後再試');
+            alert('發生錯誤，請重試');
             btn.disabled = false;
-            btn.innerText = "確認報名";
+            btn.innerText = originalText;
         }
-    });
+    }
 </script>
 
 </body>
