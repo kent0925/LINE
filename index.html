@@ -5,213 +5,125 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>活動報名表單</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f4f4f9; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; }
-        .info-box { background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .info-item { margin-bottom: 8px; }
-        .info-label { font-weight: bold; }
-        label { display: block; margin-top: 15px; font-weight: bold; }
-        input, select, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        /* 現代柔和配色方案 */
+        :root {
+            --primary-color: #00796b; /* 主色調: 深青綠/藍綠色 */
+            --secondary-color: #4db6ac; /* 次要色: 較淺的青綠色 */
+            --bg-color: #f0f8ff; /* 輕微的淡藍色背景 */
+            --box-bg-color: #f7f7f7; /* 區塊背景色 */
+            --success-color: #4caf50; /* 成功綠 */
+            --warning-color: #ff9800; /* 修改黃/橘色 */
+            --danger-color: #e53935; /* 危險紅 */
+        }
+
+        body { 
+            font-family: "Microsoft JhengHei", sans-serif; 
+            background-color: var(--bg-color); /* 使用新背景色 */
+            padding: 20px; 
+        }
+        
+        .container { 
+            max-width: 500px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; /* 圓角更大 */
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1); /* 柔和陰影 */
+        }
+
+        h2 { 
+            text-align: center; 
+            color: var(--primary-color); /* 標題使用主色調 */
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        
+        /* 活動資訊區塊 (Info Box) 強調 */
+        .info-box { 
+            background: var(--box-bg-color); 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            border-left: 5px solid var(--secondary-color); /* 側邊條裝飾 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .info-item { 
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .info-label { 
+            font-weight: bold; 
+            color: var(--primary-color);
+            min-width: 60px; /* 確保標籤對齊 */
+            display: inline-block;
+        }
+
+        label { 
+            display: block; 
+            margin-top: 15px; 
+            font-weight: bold; 
+            color: #555;
+        }
+
+        input, select, textarea { 
+            width: 100%; 
+            padding: 10px; 
+            margin-top: 5px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            box-sizing: border-box;
+            transition: border-color 0.3s; /* 增加過渡效果 */
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary-color); /* 聚焦時邊框變色 */
+            outline: none;
+        }
         
         /* 按鈕樣式區 */
-        .btn-group { margin-top: 20px; display: flex; gap: 10px; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; color: white; }
+        .btn-group { 
+            margin-top: 30px; 
+            display: flex; 
+            gap: 15px; 
+        }
+        button { 
+            flex: 1; 
+            padding: 12px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            color: white; 
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.1s, box-shadow 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* 增加按鈕陰影 */
+        }
         
-        #signupBtn { background-color: #28a745; } /* 綠色 */
-        #updateBtn { background-color: #007bff; } /* 藍色 */
-        #cancelBtn { background-color: #dc3545; } /* 紅色 */
+        #signupBtn { 
+            background-color: var(--success-color); /* 綠色 */
+        } 
+        #updateBtn { 
+            background-color: var(--warning-color); /* 橘色/修改色 */
+        } 
+        #cancelBtn { 
+            background-color: var(--danger-color); /* 紅色 */
+        } 
         
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        .hidden { display: none !important; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h2 id="eventTitle">載入中...</h2>
-    
-    <div class="info-box">
-        <div class="info-item"><span class="info-label">主辦人：</span> <span id="organizer">...</span></div>
-        <div class="info-item"><span class="info-label">時間：</span> <span id="time">...</span></div>
-        <div class="info-item"><span class="info-label">地點：</span> <span id="location">...</span></div>
-        <div class="info-item"><span class="info-label">地址：</span> <span id="address">...</span></div>
-        <div class="info-item" id="mapLinkBox"></div>
-    </div>
-
-    <form id="mainForm">
-        <input type="hidden" id="lineUserId">
-
-        <label>參加人姓名 (LINE)</label>
-        <input type="text" id="lineName" readonly placeholder="讀取中...">
-
-        <label>參加人數 (含本人)</label>
-        <select id="count">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
-        </select>
-
-        <label>其他來賓姓名</label>
-        <textarea id="guests" rows="3" placeholder="例如：王小明, 李大華"></textarea>
-
-        <div class="btn-group">
-            <button type="button" id="signupBtn" class="hidden" onclick="handleSubmit('signup')">確認報名</button>
-            <button type="button" id="updateBtn" class="hidden" onclick="handleSubmit('update')">修改資料</button>
-            <button type="button" id="cancelBtn" class="hidden" onclick="handleSubmit('cancel')">取消報名</button>
-        </div>
-    </form>
-</div>
-
-<script>
-    // ================= 設定區 =================
-    const LIFF_ID = "2008678090-b1Up4o0J"; 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz8o600QT2UGE97PL10yPrjne0pTHHScrvps2huCcBYgEOXENl5l6NDhjTfgPu-GWTEGw/exec";
-    // =========================================
-
-    window.onload = async function() {
-        await initLIFF();
-    };
-
-    async function initLIFF() {
-        try {
-            await liff.init({ liffId: LIFF_ID });
-            if (liff.isLoggedIn()) {
-                const profile = await liff.getProfile();
-                const userName = profile.displayName;
-                const userId = profile.userId; 
-                
-                document.getElementById('lineName').value = userName;
-                document.getElementById('lineUserId').value = userId; 
-                
-                await fetchData(userId); 
-            } else {
-                liff.login();
-            }
-        } catch (err) {
-            alert('LIFF 初始化失敗: ' + err.message);
+        button:hover:not(:disabled) {
+            transform: translateY(-2px); /* 懸停時略微抬起 */
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
-    }
 
-    // 整合讀取：抓活動資訊 + 檢查此人是否報名過
-    async function fetchData(userId) { 
-        try {
-            const url = `${GAS_URL}?u=${encodeURIComponent(userId)}`; 
-            const response = await fetch(url);
-            const data = await response.json();
-
-            // 1. 填入活動資訊
-            document.getElementById('eventTitle').innerText = data.Title || "活動";
-            document.getElementById('organizer').innerText = data.Organizer || "";
-            
-            let displayTime = data.Time || "";
-            if (displayTime && !isNaN(new Date(displayTime))) { 
-                displayTime = new Date(displayTime).toLocaleString('zh-TW', {
-                    year: 'numeric', month: '2-digit', day: '2-digit', 
-                    hour: '2-digit', minute: '2-digit', hour12: false
-                });
-            }
-            document.getElementById('time').innerText = displayTime;
-
-            // 讀取 Location (地點) 和 Address (地址)
-            document.getElementById('location').innerText = data.Location || ""; 
-            document.getElementById('address').innerText = data.Address || ""; 
-
-            // 地圖連結邏輯：優先使用 Address (精確地址)
-            const mapSearchTerm = data.Address || data.Location; 
-            if (mapSearchTerm) {
-                // 使用 Google 地圖搜尋連結
-                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapSearchTerm)}`; 
-                document.getElementById('mapLinkBox').innerHTML = `<a href="${mapUrl}" target="_blank" style="color:#007bff; text-decoration: none;">📍 開啟地圖</a>`;
-            } else {
-                 document.getElementById('mapLinkBox').innerHTML = '';
-            }
-
-            // 2. 判斷使用者狀態 (顯示對應按鈕)
-            if (data.userData) {
-                // 已報名過 -> 填入舊資料，顯示 修改/取消
-                document.getElementById('count').value = data.userData.count;
-                document.getElementById('guests').value = data.userData.guests;
-                
-                showButtons('edit'); // 顯示編輯模式
-            } else {
-                // 未報名 -> 顯示 報名按鈕
-                showButtons('new'); // 顯示新增模式
-            }
-
-        } catch (err) {
-            console.error("讀取資料失敗:", err);
-            alert("讀取活動或報名資料失敗，請檢查網路或後端設定。");
+        button:disabled { 
+            background-color: #b0bec5; /* 禁用時的灰色 */
+            cursor: not-allowed; 
+            box-shadow: none;
+            transform: none;
         }
-    }
-
-    function showButtons(mode) {
-        const signupBtn = document.getElementById('signupBtn');
-        const updateBtn = document.getElementById('updateBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-
-        if (mode === 'edit') {
-            signupBtn.classList.add('hidden');
-            updateBtn.classList.remove('hidden');
-            cancelBtn.classList.remove('hidden');
-        } else {
-            signupBtn.classList.remove('hidden');
-            updateBtn.classList.add('hidden');
-            cancelBtn.classList.add('hidden');
+        .hidden { 
+            display: none !important; 
         }
-    }
 
-    // 統一處理送出 (action = signup / update / cancel)
-    async function handleSubmit(action) {
-        if (action === 'cancel' && !confirm("確定要取消報名嗎？")) return;
-
-        const btnId = action === 'signup' ? 'signupBtn' : (action === 'update' ? 'updateBtn' : 'cancelBtn');
-        const btn = document.getElementById(btnId);
-        const originalText = btn.innerText;
-        
-        btn.disabled = true;
-        btn.innerText = "處理中...";
-
-        const formData = {
-            action: action, 
-            lineUserId: document.getElementById('lineUserId').value, 
-            lineName: document.getElementById('lineName').value,
-            count: document.getElementById('count').value,
-            guests: document.getElementById('guests').value
-        };
-
-        try {
-            await fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify(formData),
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain' }
-            });
-
-            alert(action === 'cancel' ? '已取消報名！\n\n(若為 LIFF 視窗將自動關閉)' : '資料已送出！\n\n(若為 LIFF 視窗將自動關閉)');
-            
-            setTimeout(() => {
-                if (liff.isInClient()) { 
-                    liff.closeWindow();
-                }
-            }, 500);
-
-        } catch (err) {
-            console.error("提交錯誤:", err);
-            alert('發生錯誤，請重試！');
-            btn.disabled = false;
-            btn.innerText = originalText;
-        }
-    }
-</script>
-
-</body>
-</html>
+        /* 地
