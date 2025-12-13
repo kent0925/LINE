@@ -121,15 +121,14 @@
             }
             document.getElementById('time').innerText = displayTime;
 
-            // *** 修正點：將 Location 和 Address 都設定為 data.Location 的內容 ***
-            const locationText = data.Location || "";
-            document.getElementById('location').innerText = locationText; 
-            document.getElementById('address').innerText = data.Address || locationText; // 接收後端傳來的 Address (已同步 Location)
-            // **********************************
+            // 讀取 Location (地點) 和 Address (地址)
+            document.getElementById('location').innerText = data.Location || ""; 
+            document.getElementById('address').innerText = data.Address || ""; 
 
-            // 地圖連結邏輯：使用 Address 或 Location
+            // 地圖連結邏輯：優先使用 Address (精確地址)
             const mapSearchTerm = data.Address || data.Location; 
             if (mapSearchTerm) {
+                // 使用 Google 地圖搜尋連結
                 const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapSearchTerm)}`; 
                 document.getElementById('mapLinkBox').innerHTML = `<a href="${mapUrl}" target="_blank" style="color:#007bff; text-decoration: none;">📍 開啟地圖</a>`;
             } else {
