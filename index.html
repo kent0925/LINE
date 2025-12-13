@@ -32,13 +32,13 @@
 <div class="container">
     <h2 id="eventTitle">載入中...</h2>
     
-<div class="info-box">
-    <div class="info-item"><span class="info-label">主辦人：</span> <span id="organizer">...</span></div>
-    <div class="info-item"><span class="info-label">時間：</span> <span id="time">...</span></div>
-    <div class="info-item"><span class="info-label">地點：</span> <span id="location">...</span></div>
-    <div class="info-item"><span class="info-label">地址：</span> <span id="address">...</span></div>
-    <div class="info-item" id="mapLinkBox"></div>
-</div>
+    <div class="info-box">
+        <div class="info-item"><span class="info-label">主辦人：</span> <span id="organizer">...</span></div>
+        <div class="info-item"><span class="info-label">時間：</span> <span id="time">...</span></div>
+        <div class="info-item"><span class="info-label">地點：</span> <span id="location">...</span></div>
+        <div class="info-item"><span class="info-label">地址：</span> <span id="address">...</span></div>
+        <div class="info-item" id="mapLinkBox"></div>
+    </div>
 
     <form id="mainForm">
         <input type="hidden" id="lineUserId">
@@ -87,47 +87,53 @@
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 const userName = profile.displayName;
-                const userId = profile.userId; // <<< 抓取 User ID
+                const userId = profile.userId; 
                 
                 document.getElementById('lineName').value = userName;
-                document.getElementById('lineUserId').value = userId; // <<< 儲存 User ID
+                document.getElementById('lineUserId').value = userId; 
                 
-                // 使用 User ID 去後端抓資料 (活動資訊 + 報名狀態)
-                await fetchData(userId); // <<< 使用 userId
+                await fetchData(userId); 
             } else {
                 liff.login();
             }
         } catch (err) {
-            alert('LIFF 初始化失敗: ' + err);
+            alert('LIFF 初始化失敗: ' + err.message);
         }
     }
 
     // 整合讀取：抓活動資訊 + 檢查此人是否報名過
-    async function fetchData(userId) { // <<< 接收 userId
+    async function fetchData(userId) { 
         try {
-            // 在網址後面加上參數 ?u=User ID
-            const url = `${GAS_URL}?u=${encodeURIComponent(userId)}`; // <<< 網址帶入 userId
+            const url = `${GAS_URL}?u=${encodeURIComponent(userId)}`; 
             const response = await fetch(url);
             const data = await response.json();
 
-            // 1. 填入活動資訊 (含時間格式化)
+            // 1. 填入活動資訊
             document.getElementById('eventTitle').innerText = data.Title || "活動";
             document.getElementById('organizer').innerText = data.Organizer || "";
             
             let displayTime = data.Time || "";
-            if (displayTime.includes('T')) {
+            if (displayTime && !isNaN(new Date(displayTime))) { 
                 displayTime = new Date(displayTime).toLocaleString('zh-TW', {
                     year: 'numeric', month: '2-digit', day: '2-digit', 
                     hour: '2-digit', minute: '2-digit', hour12: false
                 });
             }
             document.getElementById('time').innerText = displayTime;
-            document.getElementById('location').innerText = data.Location || "";
-            
-            if (data.Location) {
-                // 注意：這裡的網址結構似乎有誤，應為 'https://www.google.com/maps/search/?api=1&query='
-                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.Location)}`;
-                document.getElementById('mapLinkBox').innerHTML = `<a href="${mapUrl}" target="_blank" style="color:#007bff;">📍 開啟地圖</a>`;
+
+            // *** 修正點：將 Location 和 Address 都設定為 data.Location 的內容 ***
+            const locationText = data.Location || "";
+            document.getElementById('location').innerText = locationText; 
+            document.getElementById('address').innerText = data.Address || locationText; // 接收後端傳來的 Address (已同步 Location)
+            // **********************************
+
+            // 地圖連結邏輯：使用 Address 或 Location
+            const mapSearchTerm = data.Address || data.Location; 
+            if (mapSearchTerm) {
+                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapSearchTerm)}`; 
+                document.getElementById('mapLinkBox').innerHTML = `<a href="${mapUrl}" target="_blank" style="color:#007bff; text-decoration: none;">📍 開啟地圖</a>`;
+            } else {
+                 document.getElementById('mapLinkBox').innerHTML = '';
             }
 
             // 2. 判斷使用者狀態 (顯示對應按鈕)
@@ -143,8 +149,8 @@
             }
 
         } catch (err) {
-            console.error(err);
-            alert("讀取資料失敗");
+            console.error("讀取資料失敗:", err);
+            alert("讀取活動或報名資料失敗，請檢查網路或後端設定。");
         }
     }
 
@@ -176,15 +182,14 @@
         btn.innerText = "處理中...";
 
         const formData = {
-            action: action, // 告訴後端要做什麼
-            lineUserId: document.getElementById('lineUserId').value, // <<< 送出 User ID
+            action: action, 
+            lineUserId: document.getElementById('lineUserId').value, 
             lineName: document.getElementById('lineName').value,
             count: document.getElementById('count').value,
             guests: document.getElementById('guests').value
         };
 
         try {
-            // 注意：因為使用 mode: 'no-cors'，我們無法從 fetch 得到實際的 JSON 回傳結果，只能知道請求是否成功送出
             await fetch(GAS_URL, {
                 method: 'POST',
                 body: JSON.stringify(formData),
@@ -192,11 +197,17 @@
                 headers: { 'Content-Type': 'text/plain' }
             });
 
-            alert(action === 'cancel' ? '已取消報名' : '資料已送出！');
-            liff.closeWindow();
+            alert(action === 'cancel' ? '已取消報名！\n\n(若為 LIFF 視窗將自動關閉)' : '資料已送出！\n\n(若為 LIFF 視窗將自動關閉)');
+            
+            setTimeout(() => {
+                if (liff.isInClient()) { 
+                    liff.closeWindow();
+                }
+            }, 500);
 
         } catch (err) {
-            alert('發生錯誤，請重試');
+            console.error("提交錯誤:", err);
+            alert('發生錯誤，請重試！');
             btn.disabled = false;
             btn.innerText = originalText;
         }
