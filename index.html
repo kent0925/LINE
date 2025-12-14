@@ -10,6 +10,15 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20
 .container { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
 h1 { color: #00b900; border-bottom: 3px solid #00b900; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
 .info-card, .form-section, .stats-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; }
+
+/* ⭐️ 新增/修改: 減少 info-card 內段落的上下間距 */
+.info-card p {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    line-height: 1.5; 
+}
+/* 結束修改 */
+
 label { display:block; margin-top:10px; font-weight:bold; }
 input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; }
 .btn { padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin:5px; }
@@ -25,20 +34,20 @@ input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px;
 #form-actions { display:flex; justify-content:space-around; }
 .loading { text-align:center; padding:30px; }
 
-/* ⭐️ 新增：地圖連結按鈕樣式 */
+/* ⭐️ 原有的地圖連結按鈕樣式 */
 .btn-map {
-    display: inline-block;
-    padding: 3px 8px; 
-    margin-left: 10px;
-    background-color: #4285F4; /* Google 藍色 */
-    color: white !important;
-    text-decoration: none;
-    border-radius: 4px;
-    font-weight: normal; 
-    font-size: 0.9em;
+    display: inline-block;
+    padding: 3px 8px; 
+    margin-left: 10px;
+    background-color: #4285F4; /* Google 藍色 */
+    color: white !important;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: normal; 
+    font-size: 0.9em;
 }
 .btn-map:hover {
-    background-color: #357ae8; 
+    background-color: #357ae8; 
 }
 </style>
 </head>
@@ -59,12 +68,18 @@ input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px;
 </div>
 
 <div id="activity-info" class="info-card" style="display:none;">
-<h2>活動資訊 - <span id="info-title"></span></h2>
-<p><strong>主辦:</strong> <span id="info-organizer"></span></p>
-<p><strong>時間:</strong> <span id="info-time"></span></p>
-<p><strong>店名:</strong> <span id="info-venue-name"></span></p> 
-<p><strong>地點:</strong> <span id="info-location"></span> <a id="info-map-link" href="#" target="_blank" aria-label="開啟 Google 地圖" class="btn-map">📌 開啟地圖</a></p> 
+    <h2>活動資訊 - <span id="info-title"></span></h2>
+    <p><strong>主辦:</strong> <span id="info-organizer"></span></p>
+    <p><strong>時間:</strong> <span id="info-time"></span></p>
+    <p><strong>店名:</strong> <span id="info-venue-name"></span></p> 
+    
+    <p style="display: flex; align-items: center; flex-wrap: wrap;"> 
+        <strong>地點:</strong> 
+        <span id="info-location" style="margin-left: 5px;"></span> 
+        <a id="info-map-link" href="#" target="_blank" aria-label="開啟 Google 地圖" class="btn-map">📌 開啟地圖</a>
+    </p>
 </div>
+
 <div id="registration-form" class="form-section" style="display:none;">
 <h2>您的報名資料</h2>
 <p><strong>參加人姓名:</strong> <span id="line-nickname">載入中...</span></p>
@@ -144,7 +159,7 @@ function selectEvent(eventId){
     document.getElementById('info-organizer').textContent = ev.Organizer;
     document.getElementById('info-time').textContent = formatLocalTime(ev.Time);
     
-    document.getElementById('info-venue-name').textContent = ev.VenueName; // ⭐️ 新增：讀取並顯示 VenueName
+    document.getElementById('info-venue-name').textContent = ev.VenueName; 
     
     document.getElementById('info-location').textContent = ev.Address;
     document.getElementById('info-map-link').href = ev.MapUrl;
