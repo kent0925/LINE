@@ -6,7 +6,7 @@
     <title>LIFF 多活動報名表單</title>
     <script src="https://static.line-scdn.net/liff/2.22.3/liff.js"></script>
     <style>
-        /* CSS 樣式部分保持不變 */
+        /* CSS 樣式部分 */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f5f5f5; }
         .container { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
         h1 { color: #00b900; border-bottom: 3px solid #00b900; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
@@ -46,7 +46,7 @@
             <label for="event-select">可報名活動列表</label>
             <select id="event-select" onchange="selectEvent(this.value)">
                 <option value="">-- 請選擇一項活動 --</option>
-                </select>
+            </select>
             <div id="select-message" class="message"></div>
         </div>
         
@@ -89,7 +89,9 @@
     </div>
 
     <script>
+        // !! 請將 YOUR_GAS_WEB_APP_URL 替換為您在步驟 2 部署 GAS 後取得的「網路應用程式網址」 !!
         const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec';
+        const LIFF_ID = '2008678090-aXTesgDK'; // 您的 LIFF ID
         
         let LINE_UID = '';
         let LINE_NICKNAME = '';
@@ -98,9 +100,10 @@
 
         // --- 初始化 LIFF ---
         function initializeLiff() {
-            liff.init({ liffId: '2008678090-aXTesgDK' }) 
+            liff.init({ liffId: LIFF_ID }) 
                 .then(() => {
                     if (!liff.isLoggedIn()) {
+                        // 如果沒有登入，觸發登入
                         liff.login();
                         return;
                     }
@@ -117,7 +120,7 @@
                         document.getElementById('line-nickname').textContent = LINE_NICKNAME;
                         document.getElementById('line-uid').value = LINE_UID;
                         
-                        // 載入活動列表，並填充到下拉選單
+                        // 載入活動列表
                         loadEventsList();
                         
                     }).catch(err => {
@@ -129,7 +132,7 @@
                 })
                 .catch((err) => {
                     console.error("LIFF initialization failed", err);
-                    alert('LIFF 初始化失敗。');
+                    alert('LIFF 初始化失敗，請檢查 LIFF ID 和 Endpoint URL 設定。');
                     document.getElementById('loading-spinner').style.display = 'none';
                 });
         }
@@ -139,6 +142,12 @@
             try {
                 const url = `${GAS_WEB_APP_URL}?action=getEventsList`;
                 const response = await fetch(url);
+                
+                // 檢查 HTTP 狀態碼
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status}`);
+                }
+                
                 const result = await response.json();
 
                 if (result.status === 'success') {
@@ -152,4 +161,271 @@
                     // 產生參加人數下拉選單 (只需產生一次)
                     const select = document.getElementById('attendees-count');
                     if (select.options.length === 0) {
-                        for (let i = 1; i <=
+                        for (let i = 1; i <= 10; i++) {
+                            const option = document.createElement('option');
+                            option.value = i;
+                            option.textContent = i;
+                            select.appendChild(option);
+                        }
+                    }
+
+                } else {
+                    displaySelectMessage('error', '載入活動列表失敗: ' + (result.message || '未知錯誤'));
+                }
+            } catch (error) {
+                console.error("Fetch events list error:", error);
+                displaySelectMessage('error', '連線錯誤，無法載入活動列表。請檢查 GAS Web App URL 和部署狀態。');
+            } finally {
+                document.getElementById('loading-spinner').style.display = 'none';
+            }
+        }
+        
+        // --- 渲染活動下拉選單 (處理時間格式已在 GAS 端完成) ---
+        function renderEventDropdown(events) {
+            const select = document.getElementById('event-select');
+            select.innerHTML = '<option value="">-- 請選擇一項活動 --</option>'; 
+            
+            if (events.length === 0) {
+                displaySelectMessage('error', '目前沒有開放報名的活動。');
+                return;
+            }
+            
+            events.forEach(event => {
+                const option = document.createElement('option');
+                option.value = event.EventID;
+                option.textContent = `${event.Title} (${event.Time})`;
+                select.appendChild(option);
+            });
+        }
+        
+        // --- 選擇活動，顯示表單 ---
+        function selectEvent(eventId) {
+            if (!eventId) {
+                hideFormAndStats();
+                return;
+            }
+            
+            CURRENT_EVENT_ID = eventId;
+            const event = ALL_EVENTS.find(e => e.EventID === eventId);
+            
+            if (!event) {
+                alert('活動 ID 錯誤，請重新選擇。');
+                hideFormAndStats();
+                return;
+            }
+            
+            // 填充單一活動資訊
+            document.getElementById('info-title').textContent = event.Title || 'N/A';
+            document.getElementById('info-organizer').textContent = event.Organizer || 'N/A';
+            document.getElementById('info-time').textContent = event.Time || 'N/A';
+            document.getElementById('info-location').textContent = event.Location || 'N/A';
+            document.getElementById('info-map-link').href = event.MapUrl || '#';
+            
+            // 顯示表單和統計區塊
+            document.getElementById('activity-info').style.display = 'block';
+            document.getElementById('registration-form').style.display = 'block';
+            document.getElementById('statistics').style.display = 'block';
+            
+            // 載入特定活動的統計和用戶狀態
+            loadStatsAndStatus(CURRENT_EVENT_ID);
+        }
+
+        // --- 隱藏表單和統計區塊 ---
+        function hideFormAndStats() {
+            CURRENT_EVENT_ID = null;
+            document.getElementById('activity-info').style.display = 'none';
+            document.getElementById('registration-form').style.display = 'none';
+            document.getElementById('statistics').style.display = 'none';
+            hideMessage();
+        }
+        
+        // --- 載入統計數據和用戶報名狀態 ---
+        async function loadStatsAndStatus(eventId, isRefresh = false) {
+            if (isRefresh) {
+                document.getElementById('statistics').style.opacity = 0.5;
+            }
+            
+            try {
+                const url = `${GAS_WEB_APP_URL}?action=getStatsAndStatus&lineUid=${LINE_UID}&eventId=${eventId}`; 
+                const response = await fetch(url);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // 顯示統計數據
+                    document.getElementById('total-attendees').textContent = result.totalAttendees;
+                    const list = document.getElementById('registered-list');
+                    list.innerHTML = '';
+                    if (result.registeredUsers.length > 0) {
+                         result.registeredUsers.forEach(name => {
+                            const li = document.createElement('li');
+                            // 標記目前用戶
+                            li.textContent = name + (name === LINE_NICKNAME ? ' (您)' : ''); 
+                            list.appendChild(li);
+                        });
+                    } else {
+                        list.innerHTML = '<li>目前還沒有人報名喔！</li>';
+                    }
+                    
+                    // 處理用戶報名狀態
+                    const formActionsDiv = document.getElementById('form-actions');
+                    formActionsDiv.innerHTML = '';
+                    
+                    if (result.userStatus && result.userStatus.Status === 'Registered') {
+                        // 已報名狀態
+                        
+                        // 預填報名資料
+                        document.getElementById('attendees-count').value = result.userStatus.Attendees_Count;
+                        document.getElementById('guest-names').value = result.userStatus.Guest_Names;
+                        
+                        // 顯示修改和取消按鈕
+                        formActionsDiv.innerHTML = `
+                            <button class="btn btn-modify" onclick="handleRegistration('register')">✅ 修改報名</button>
+                            <button class="btn btn-cancel" onclick="handleRegistration('cancel')">❌ 取消報名</button>
+                        `;
+                        displayFormMessage('success', '您已報名此活動，可以在此修改或取消。');
+                        
+                    } else {
+                        // 未報名或已取消狀態
+                        
+                        // 清空表單
+                        document.getElementById('attendees-count').value = 1;
+                        document.getElementById('guest-names').value = '';
+                        
+                        // 顯示報名按鈕
+                        formActionsDiv.innerHTML = `
+                            <button class="btn btn-register" onclick="handleRegistration('register')">🚀 確認報名</button>
+                        `;
+                        
+                        if (result.userStatus && result.userStatus.Status === 'Cancelled') {
+                            displayFormMessage('error', '您已取消此活動報名，點擊「確認報名」可重新報名。');
+                        } else {
+                            hideMessage();
+                        }
+                    }
+                    
+                } else {
+                    displayFormMessage('error', '載入統計資料失敗: ' + result.message);
+                }
+            } catch (error) {
+                console.error("Fetch stats and status error:", error);
+                displayFormMessage('error', '連線錯誤，無法載入統計資訊。');
+            } finally {
+                document.getElementById('statistics').style.opacity = 1;
+            }
+        }
+        
+        // --- 處理報名/取消 (POST 到 GAS) ---
+        async function handleRegistration(action) {
+            if (!CURRENT_EVENT_ID) {
+                alert('請先選擇活動！');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            displayFormMessage('none', '處理中...');
+
+            const attendeesCount = document.getElementById('attendees-count').value;
+            const guestNames = document.getElementById('guest-names').value.trim();
+
+            const postData = {
+                action: action,
+                eventId: CURRENT_EVENT_ID, 
+                lineUid: LINE_UID,
+                lineNickname: LINE_NICKNAME,
+                attendeesCount: attendeesCount,
+                guestNames: guestNames
+            };
+            
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(postData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    let msg = '';
+                    const eventTitle = ALL_EVENTS.find(e => e.EventID === CURRENT_EVENT_ID)?.Title || '此活動';
+                    if (action === 'register') {
+                        msg = `恭喜您！${eventTitle} 報名成功！`;
+                        if (result.message.includes('Update')) {
+                            msg = `${eventTitle} 的報名資料已成功修改！`;
+                        }
+                    } else if (action === 'cancel') {
+                        msg = `${eventTitle} 的報名已成功取消。`;
+                    }
+                    displayFormMessage('success', msg);
+                    
+                    loadStatsAndStatus(CURRENT_EVENT_ID);
+                    sendLineMessage(action, eventTitle, attendeesCount);
+                    
+                } else {
+                    displayFormMessage('error', result.message || '報名處理失敗。');
+                }
+            } catch (error) {
+                console.error("Registration post error:", error);
+                displayFormMessage('error', '連線錯誤，請檢查網路或稍後再試。');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // --- 顯示/隱藏訊息 (表單區域) ---
+        function displayFormMessage(type, text) {
+            const msgBox = document.getElementById('form-message');
+            msgBox.textContent = text;
+            msgBox.className = `message ${type}`;
+            msgBox.style.display = 'block';
+            if (type === 'none') {
+                msgBox.style.display = 'block'; 
+                msgBox.className = `message`; 
+            }
+        }
+        
+        // --- 顯示/隱藏訊息 (活動選擇區域) ---
+        function displaySelectMessage(type, text) {
+            const msgBox = document.getElementById('select-message');
+            msgBox.textContent = text;
+            msgBox.className = `message ${type}`;
+            msgBox.style.display = 'block';
+        }
+
+        function hideMessage() {
+            document.getElementById('form-message').style.display = 'none';
+        }
+        
+        // --- 發送 LINE 訊息通知 ---
+        function sendLineMessage(action, eventTitle, attendeesCount) {
+            if (!liff.isInClient()) {
+                console.log("Not in LINE client, skip sending message.");
+                return;
+            }
+            
+            let msgText = '';
+            if (action === 'register') {
+                msgText = `✅ ${eventTitle} 報名/修改成功！\n參加者：${LINE_NICKNAME}\n總人數：${attendeesCount} 位\n請點擊表單查看詳細資訊。`;
+            } else if (action === 'cancel') {
+                msgText = `❌ ${eventTitle} 已取消報名。\n參加者：${LINE_NICKNAME}`;
+            }
+            
+            if (msgText) {
+                liff.sendMessages([{
+                    type: 'text',
+                    text: msgText
+                }]).then(() => {
+                    console.log('Message sent successfully');
+                }).catch((err) => {
+                    console.error('Error sending message:', err);
+                });
+            }
+        }
+        
+        // 啟動 LIFF
+        document.addEventListener('DOMContentLoaded', initializeLiff);
+    </script>
+
+</body>
+</html>
