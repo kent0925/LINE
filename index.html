@@ -207,7 +207,7 @@
     // ================= 設定區 (請務必檢查和替換!) =================
     const LIFF_ID = "2008678090-b1Up4o0J"; 
     // 請替換成您的 Google Apps Script 部署 URL
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzvve6noaM6oMKHwHfFazP7iVwWVWAY17Reyt3v-kt9yRHPR8diuFgY5xa0bjbN4OblOA/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbz8o600QT2UGE97PL10yPrjne0pTHHScrvps2huCcBYgEOXENl5l6NDhjTfgPu-GWTEGw/exec"; 
     // =========================================
 
     let ALL_EVENTS = []; 
@@ -242,6 +242,7 @@
         }
     }
 
+    // 初始載入活動、統計和用戶數據
     async function fetchData(userId) { 
         try {
             const loadingDiv = document.getElementById('loading');
@@ -289,10 +290,10 @@
         }
     }
 
-    // 填充下拉式選單 
+    // 填充下拉式選單 (已優化，取消狀態不標註)
     function populateEventSelect(events) {
         const select = document.getElementById('event-select');
-        select.innerHTML = '<option value="" disabled selected>-- 請選擇一個活動 --</option>'; // 清除舊選項
+        select.innerHTML = '<option value="" disabled selected>-- 請選擇一個活動 --</option>'; 
         
         events.forEach(event => {
             let optionText = `${event.Title} (${event.Time})`; 
@@ -301,8 +302,6 @@
 
             if (SIGNUP_STATUSES.includes(userStatus)) {
                 optionText += ' (已報名)';
-            } else if (userStatus === 'CANCEL') {
-                optionText += ' (已取消)';
             }
             
             select.innerHTML += `<option value="${event.EventID}">${optionText}</option>`;
@@ -327,7 +326,6 @@
         document.getElementById('eventID').value = eventId; 
 
         const selectedEvent = ALL_EVENTS.find(e => e.EventID === eventId);
-        // 從 USER_SIGNUP_DATA 讀取該用戶對該活動的最新有效狀態
         const currentUserSignup = USER_SIGNUP_DATA[eventId];
         
         if (selectedEvent) {
@@ -335,7 +333,7 @@
             detailsBox.classList.remove('hidden');
             updateStatisticsDisplay(eventId); 
 
-            // ====== 核心判斷邏輯：根據最新狀態決定按鈕顯示 ======
+            // ====== 核心判斷邏輯 ======
             const userStatus = currentUserSignup ? currentUserSignup.status : 'NONE';
             
             // 判斷：最新狀態是否為 'SIGNUP' 或 'UPDATE' (即已報名)
@@ -348,8 +346,7 @@
                 document.getElementById('guests').value = currentUserSignup.guests;
                 showButtons('edit'); 
             } else {
-                // **報名前狀態：** 顯示確認報名按鈕
-                // 狀態可能是 'NONE' (從未報名) 或 'CANCEL' (已取消)
+                // **報名前狀態：** 顯示確認報名按鈕 (包括從未報名或已取消的狀態)
                 document.getElementById('count').value = '1';
                 document.getElementById('guests').value = '';
                 showButtons('new'); 
@@ -420,8 +417,32 @@
             cancelBtn.classList.add('hidden');
         }
     }
+    
+    // 輔助函式：用於報名成功後，重新拉取用戶數據和統計數據
+    async function updateUserData(userId) {
+        try {
+            const url = `${GAS_URL}?u=${encodeURIComponent(userId)}`;
+            const response = await fetch(url);
+            const data = await response.json();
 
-    // 統一處理送出 
+            if (data.status === 'error') {
+                throw new Error(data.message);
+            }
+
+            // 更新用戶數據和統計數據
+            USER_SIGNUP_DATA = data.userData || {};
+            ALL_EVENT_STATS = data.eventStats;
+            
+            // 刷新下拉選單上的 (已報名) 標記
+            populateEventSelect(ALL_EVENTS);
+
+        } catch (err) {
+            console.error("重新獲取用戶數據失敗:", err);
+            // 這裡不顯示 alert，避免打斷用戶體驗，讓 handleEventSelection 之後讀取到的數據為舊的
+        }
+    }
+
+    // 統一處理送出 (已修正為即時狀態更新)
     async function handleSubmit(action) {
         if (action === 'cancel' && !confirm("確定要取消報名嗎？此操作將取消您目前的有效報名紀錄。")) return;
 
@@ -456,6 +477,7 @@
         }
 
         try {
+            // 發送 POST 請求給 GAS
             const response = await fetch(GAS_URL, {
                 method: 'POST',
                 body: JSON.stringify(formData),
@@ -463,15 +485,21 @@
                 headers: { 'Content-Type': 'text/plain' } 
             });
             
+            // 成功提交後，立即重新拉取數據並更新介面
+            const userId = document.getElementById('lineUserId').value;
+            await updateUserData(userId); 
+            
+            // 根據新的 USER_SIGNUP_DATA 重新執行介面判斷，更新按鈕
+            handleEventSelection(); 
+            
+            // 提示成功訊息
             alert(action === 'cancel' ? '✅ 已成功取消報名！' : '✅ 資料已成功送出！');
             
-            // 成功提交後，無論 LIFF 是否關閉，都必須重新載入數據
+            // 根據環境選擇關閉或重新載入
             if (liff.isInClient()) { 
+                 // 在 LIFF 內，狀態已更新，可安全關閉
                  liff.closeWindow();
-            } else {
-                 // 瀏覽器環境下，強制刷新頁面，讓 doGet 重新獲取最新狀態
-                 window.location.reload(); 
-            }
+            } 
 
         } catch (err) {
             console.error("提交錯誤:", err);
