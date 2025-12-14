@@ -11,13 +11,12 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20
 h1 { color: #00b900; border-bottom: 3px solid #00b900; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
 .info-card, .form-section, .stats-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; }
 
-/* ⭐️ 新增/修改: 減少 info-card 內段落的上下間距 */
+/* 減少 info-card 內段落的上下間距 */
 .info-card p {
     margin-top: 5px;
     margin-bottom: 5px;
-    line-height: 1.5; 
+    line-height: 1.5; 
 }
-/* 結束修改 */
 
 label { display:block; margin-top:10px; font-weight:bold; }
 input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; }
@@ -34,12 +33,12 @@ input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px;
 #form-actions { display:flex; justify-content:space-around; }
 .loading { text-align:center; padding:30px; }
 
-/* ⭐️ 原有的地圖連結按鈕樣式 */
+/* 地圖連結按鈕樣式 */
 .btn-map {
     display: inline-block;
     padding: 3px 8px; 
     margin-left: 10px;
-    background-color: #4285F4; /* Google 藍色 */
+    background-color: #4285F4;
     color: white !important;
     text-decoration: none;
     border-radius: 4px;
@@ -68,16 +67,16 @@ input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px;
 </div>
 
 <div id="activity-info" class="info-card" style="display:none;">
-    <h2>活動資訊 - <span id="info-title"></span></h2>
-    <p><strong>主辦:</strong> <span id="info-organizer"></span></p>
-    <p><strong>時間:</strong> <span id="info-time"></span></p>
-    <p><strong>店名:</strong> <span id="info-venue-name"></span></p> 
-    
-    <p style="display: flex; align-items: center; flex-wrap: wrap;"> 
-        <strong>地點:</strong> 
-        <span id="info-location" style="margin-left: 5px;"></span> 
-        <a id="info-map-link" href="#" target="_blank" aria-label="開啟 Google 地圖" class="btn-map">📌 開啟地圖</a>
-    </p>
+    <h2>活動資訊 - <span id="info-title"></span></h2>
+    <p><strong>主辦:</strong> <span id="info-organizer"></span></p>
+    <p><strong>時間:</strong> <span id="info-time"></span></p>
+    <p><strong>店名:</strong> <span id="info-venue-name"></span></p> 
+    
+    <p style="display: flex; align-items: center; flex-wrap: wrap;"> 
+        <strong>地點:</strong> 
+        <span id="info-location" style="margin-left: 5px;"></span> 
+        <a id="info-map-link" href="#" target="_blank" aria-label="開啟 Google 地圖" class="btn-map">📌 開啟地圖</a>
+    </p>
 </div>
 
 <div id="registration-form" class="form-section" style="display:none;">
@@ -110,7 +109,8 @@ input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px;
 </div>
 
 <script>
-const GAS_URL='https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec';
+// ⭐ 請將此 URL 替換為您的 GAS 部署 URL
+const GAS_URL='https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec'; 
 let LINE_UID='', LINE_NICKNAME='', CURRENT_EVENT_ID=null, ALL_EVENTS=[];
 
 async function initializeLiff(){
@@ -159,7 +159,7 @@ function selectEvent(eventId){
     document.getElementById('info-organizer').textContent = ev.Organizer;
     document.getElementById('info-time').textContent = formatLocalTime(ev.Time);
     
-    document.getElementById('info-venue-name').textContent = ev.VenueName; 
+    document.getElementById('info-venue-name').textContent = ev.VenueName; 
     
     document.getElementById('info-location').textContent = ev.Address;
     document.getElementById('info-map-link').href = ev.MapUrl;
@@ -175,7 +175,14 @@ async function loadStatsAndStatus(eventId, force=false){
         document.getElementById('total-attendees').textContent = data.totalAttendees;
         const ul = document.getElementById('registered-list');
         ul.innerHTML = '';
-        data.registeredUsers.forEach(u=>ul.innerHTML+=`<li>${u.name} (${u.attendees}人)</li>`);
+        
+        // 顯示報名者和來賓姓名
+        data.registeredUsers.forEach(u=>{
+            // 格式化來賓姓名
+            let guestStr = u.guestNames ? ` (來賓: ${u.guestNames})` : '';
+            ul.innerHTML += `<li>${u.name} (${u.attendees}人)${guestStr}</li>`;
+        });
+        
         if(data.userStatus){
             document.getElementById('attendees-count').value = data.userStatus.Attendees_Count||1;
             document.getElementById('guest-names').value = data.userStatus.Guest_Names||'';
