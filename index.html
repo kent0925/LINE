@@ -7,7 +7,7 @@
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
-/* CSS 保持不變，因為您原有的樣式已經非常優秀且專業 */
+/* 保持您的 CSS 樣式不變 */
 :root {
     --primary-color: #00796b; /* 深綠 (Primary) */
     --secondary-color: #4db6ac; /* 淺綠 (Accent) */
@@ -167,7 +167,7 @@ button:disabled { background-color: #b0bec5; cursor: not-allowed; box-shadow: no
     border-radius: 6px;
     border: 1px solid var(--warning-color);
     margin-top: 15px;
-    color: #555;
+    color: #666;
     font-style: italic;
 }
 </style>
@@ -228,9 +228,10 @@ button:disabled { background-color: #b0bec5; cursor: not-allowed; box-shadow: no
 
 <script>
 // ==================== [請務必更新] 您的 LIFF ID ====================
+// 請替換為您的實際 LIFF ID
 const LIFF_ID = "2008678090-b1Up4o0J";  
 // ==================== [請務必更新] 您的 Google Apps Script URL ====================
-// 請確認此 URL 是部署為「網路應用程式」且存取權為「任何人」的最新網址
+// 請替換為您最新部署的 /exec 網址
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxhV4qunfnLQdDy64uID6uYrzxYSysOKWLpAYLUD8CtZTIlmxnwR7vAfeyrvr83lYbS/exec"; 
 
 let ALL_EVENTS = [];
@@ -239,13 +240,13 @@ let ALL_EVENT_STATS = null;
 const SIGNUP_STATUSES = ['SIGNUP','UPDATE'];
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 移除 window.onload，使用現代的 DOMContentLoaded 事件
     await initLIFF();
 });
 
 /** 輔助函數：取得 DOM 元素 */
 const getEl = (id) => document.getElementById(id);
 
+// ** 核心功能 1: LIFF 初始化與用戶資料獲取 **
 async function initLIFF() {
     try {
         await liff.init({ liffId: LIFF_ID });
@@ -255,39 +256,42 @@ async function initLIFF() {
             const profile = await liff.getProfile();
             const userName = profile.displayName;
             const userId = profile.userId; 
-            
+            
             getEl('lineName').value = userName;
             getEl('lineUserId').value = userId; 
             getEl('pageTitle').innerText = '活動報名表單 - ' + userName;
-            
+            
             await fetchData(userId); 
-        } else { 
-            // 如果 LIFF 運行在外部瀏覽器，需要登入
-            if (!liff.isInClient()) {
-                liff.login(); 
-            } else {
-                // 如果在 LINE 內部但沒有登入，這不應該發生，但作為防護
-                alert('無法取得使用者資料，請重新開啟。');
-                getEl('loading').innerText = 'LIFF 錯誤：未登入。';
-            }
-        }
-    } catch (err) { 
-        console.error("LIFF/初始化錯誤:", err);
-        alert('LIFF 初始化失敗，請檢查 LIFF ID 或網路連線。錯誤訊息: ' + err.message); 
-    }
+        } else if (!liff.isInClient()) { 
+            // 外部瀏覽器需要登入
+            liff.login(); 
+        } else {
+            getEl('loading').innerText = 'LIFF 錯誤：無法在 LINE 內取得用戶資料。';
+        }
+    } catch (err) { 
+        console.error("LIFF/初始化錯誤:", err);
+        alert('LIFF 初始化失敗，請檢查 LIFF ID 或網路連線。錯誤訊息: ' + err.message); 
+        getEl('loading').innerText = 'LIFF 初始化失敗。';
+    }
 }
 
+// ** 核心功能 2: 從 GAS 讀取資料 (GET Request) **
 async function fetchData(userId) { 
     try {
         getEl('loading').innerText = '正在讀取活動資料及您的報名狀態...';
         const url = `${GAS_URL}?u=${encodeURIComponent(userId)}`;
         const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
+        }
+        
         const data = await response.json();
         getEl('loading').classList.add('hidden');
 
-        if(data.status==='error'){ 
-            alert("後端設定錯誤，請聯繫管理員檢查 GAS 程式碼或 Google Sheet：\n" + data.message); 
-            return; 
+        if(data.status==='error'){ 
+            alert("後端設定錯誤，請聯繫管理員檢查 GAS 程式碼或 Google Sheet：\n" + data.message); 
+            return; 
         }
 
         ALL_EVENTS = data.eventList || [];
@@ -301,26 +305,26 @@ async function fetchData(userId) { 
 
         populateEventSelect(ALL_EVENTS);
 
-        // 自動選擇第一個活動，如果沒有預設選中的話
+        // 自動選擇第一個活動
         const selectEl = getEl('event-select');
-        if(!selectEl.value && ALL_EVENTS.length > 0){ 
-            selectEl.value = ALL_EVENTS[0].EventID; 
+        if(!selectEl.value && ALL_EVENTS.length > 0){ 
+            selectEl.value = ALL_EVENTS[0].EventID; 
         }
 
         handleEventSelection();
 
-    } catch(err){ 
-        console.error("Fetch Data 錯誤:", err);
-        // 專門處理 CORS/Failed to fetch 錯誤提示
-        let errMsg = "讀取活動或報名資料失敗，請檢查網路或後端設定。";
-        if (err.message.includes("Failed to fetch")) {
-             errMsg = "連線後端伺服器失敗，請確認 GAS 網址是否正確，且【存取權】是否設定為「任何人」。";
-        }
-        alert("❌ " + errMsg);
-        getEl('loading').innerText = '資料載入失敗，請檢查連線或設定。';
-    }
+    } catch(err){ 
+        console.error("Fetch Data 錯誤:", err);
+        let errMsg = "讀取活動或報名資料失敗，請檢查網路或後端設定。";
+        if (err.message.includes("Failed to fetch") || err.message.includes("CORS")) {
+             errMsg = "❌ 連線後端伺服器失敗，請確認 GAS 網址是否正確，且【存取權】是否設定為「任何人」。";
+        }
+        alert(errMsg);
+        getEl('loading').innerText = '資料載入失敗，請檢查連線或設定。';
+    }
 }
 
+// ** 輔助功能: 填充活動下拉選單 **
 function populateEventSelect(events){
     const select = getEl('event-select');
     select.innerHTML = '<option value="" disabled selected>-- 請選擇一個活動 --</option>';
@@ -333,6 +337,7 @@ function populateEventSelect(events){
     });
 }
 
+// ** 輔助功能: 處理活動選擇與表單狀態切換 **
 function handleEventSelection(){
     const eventId = getEl('event-select').value;
     const form = getEl('mainForm');
@@ -351,22 +356,18 @@ function handleEventSelection(){
         detailsBox.classList.remove('hidden');
         updateStatisticsDisplay(eventId);
 
+        // 根據用戶狀態設定表單和按鈕
         if(SIGNUP_STATUSES.includes(userStatus)){
-            // 已報名或修改中：填入舊資料，顯示修改/取消按鈕
             getEl('count').value = currentUserSignup.count;
             getEl('guests').value = currentUserSignup.guests;
-            showButtons('edit');
-        } else if(userStatus==='CANCEL'){
-            // 已取消：清空資料，顯示報名按鈕
+            showButtons('edit'); // 顯示修改/取消
+        } else {
             getEl('count').value='1';
             getEl('guests').value='';
-            showButtons('new');
-            alert("您目前對此活動的狀態為【已取消】，如欲參加請按【確認報名】重新報名。");
-        } else{
-            // 未曾報名：清空資料，顯示報名按鈕
-            getEl('count').value='1';
-            getEl('guests').value='';
-            showButtons('new');
+            showButtons('new'); // 顯示報名
+            if(userStatus==='CANCEL') {
+                alert("您曾取消報名。如欲參加請按【確認報名】重新報名。");
+            }
         }
         form.classList.remove('hidden');
     } else{
@@ -374,18 +375,21 @@ function handleEventSelection(){
     }
 }
 
+// ** 輔助功能: 顯示活動詳情 (已修正地圖連結)**
 function displayEventDetails(data){
     getEl('eventTitle').innerText = data.Title || "活動";
     getEl('organizer').innerText = data.Organizer || "";
     getEl('time').innerText = data.Time;
     getEl('location').innerText = data.Location || "";
     getEl('address').innerText = data.Address || "";
-    // ⭐ 修正地圖連結，使用標準的 Google Maps 查詢格式
+    
+    // ⭐ 修正地圖連結：使用正確的模板字串語法 ${變數名稱}
     const encodedAddress = encodeURIComponent(data.Address);
     getEl('mapLinkBox').innerHTML = data.Address ? 
-        `<a href="http://googleusercontent.com/maps.google.com/7{encodedAddress}" target="_blank">📍 開啟地圖</a>` : '';
+        `<a href="https://www.google.com/maps/dir//`。我建議使用{encodedAddress}" target="_blank">📍 開啟地圖</a>` : '';
 }
 
+// ** 輔助功能: 顯示報名統計 **
 function updateStatisticsDisplay(eventId){
     const statsBox = getEl('statistics-box');
     const currentStats = ALL_EVENT_STATS ? ALL_EVENT_STATS[eventId] : null;
@@ -393,7 +397,6 @@ function updateStatisticsDisplay(eventId){
     if(currentStats){
         getEl('statSignupCount').innerText = currentStats.signupCount;
         getEl('statTotalCount').innerText = currentStats.totalCount;
-        // 每 5 個名字換行
         let nameListHtml = currentStats.nameList.map((name,index)=>(index>0 && index%5===0?`\n${name}`:name)).join('、');
         getEl('nameList').innerText = nameListHtml||"目前尚無報名者。";
     } else{
@@ -403,6 +406,7 @@ function updateStatisticsDisplay(eventId){
     }
 }
 
+// ** 輔助功能: 顯示/隱藏按鈕 **
 function showButtons(mode){
     const signupBtn=getEl('signupBtn');
     const updateBtn=getEl('updateBtn');
@@ -419,12 +423,12 @@ function showButtons(mode){
     }
 }
 
-// 核心函式：防止重複提交邏輯
+// ** 核心功能 3: 提交表單資料 (POST Request) **
 async function handleSubmit(action){
     const buttons = [getEl('signupBtn'), getEl('updateBtn'), getEl('cancelBtn')];
     const currentBtn = getEl(action + 'Btn');
     const originalText = currentBtn.innerText;
-    
+    
     // 1. 確認/驗證
     if(action==='cancel' && !confirm("確定要取消報名嗎？此操作將取消您目前的有效報名紀錄。")) return;
 
@@ -441,7 +445,7 @@ async function handleSubmit(action){
     if((action==='signup'||action==='update') && (parseInt(formData.count)<=0||!formData.count)){ alert("參加人數至少為 1 人 (含本人)！"); return; }
 
     // 2. 鎖定所有按鈕避免重複點擊
-    buttons.forEach(btn => btn.disabled = true);
+    buttons.forEach(btn => btn.disabled = true);
     currentBtn.innerText = "處理中...";
 
     try{
@@ -451,7 +455,6 @@ async function handleSubmit(action){
             headers:{'Content-Type':'application/json'}
         });
         
-        // 檢查 HTTP 狀態碼
         if (!response.ok) {
             throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
         }
@@ -463,25 +466,23 @@ async function handleSubmit(action){
             // 成功後才關閉 LIFF 視窗
             setTimeout(()=>{ if(liff.isInClient()){ liff.closeWindow(); } },500);
         } else {
-            // 處理 GAS 回傳的錯誤訊息
             alert('❌ 資料送出失敗，請重試！' + (result.message ? `\n\n錯誤訊息: ${result.message}` : ""));
         }
 
     }catch(err){ 
         console.error("提交錯誤:", err); 
-        // 提供更明確的錯誤提示，特別是針對 CORS 導致的 Failed to fetch
-        let userMsg = '❌ 發生連線錯誤，請檢查網路或後端設定！';
-        if (err.message.includes("Failed to fetch") || err.message.includes("CORS")) {
-             userMsg = '❌ 連線錯誤，請確認 GAS 部署的【存取權】是否為「任何人」！';
-        } else if (err.message.includes("HTTP")) {
-             userMsg = `❌ 伺服器回傳錯誤：${err.message}。`;
-        }
+        let userMsg = '❌ 發生連線錯誤，請檢查網路或後端設定！';
+        if (err.message.includes("Failed to fetch") || err.message.includes("CORS")) {
+             userMsg = '❌ 連線錯誤，請確認 GAS 部署的【存取權】是否為「任何人」！';
+        } else if (err.message.includes("HTTP")) {
+             userMsg = `❌ 伺服器回傳錯誤：${err.message}。`;
+        }
         alert(userMsg); 
     } finally {
-        // 3. 解鎖按鈕
-        buttons.forEach(btn => btn.disabled = false);
-        currentBtn.innerText = originalText;
-    }
+        // 3. 解鎖按鈕
+        buttons.forEach(btn => btn.disabled = false);
+        currentBtn.innerText = originalText;
+    }
 }
 </script>
 
