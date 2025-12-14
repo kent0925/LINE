@@ -27,11 +27,12 @@ h1 { color: #00b900; border-bottom: 3px solid #00b900; padding-bottom: 10px; mar
     margin-right: 5px; 
 }
 
-/* ⭐️ 新增修正：確保地址內容不會因隱藏字符而換行或佔用額外空間 ⭐️ */
+/* ⭐️ 修正：確保地址內容在 Flexbox 中能佔用空間並自動換行 ⭐️ */
 .info-card #info-location {
-    white-space: nowrap; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
+    flex-grow: 1; 
+    min-width: 0; 
+    margin-right: 10px;
+    /* 移除 white-space: nowrap, overflow: hidden, text-overflow: ellipsis */
 }
 /* 結束修正 */
 
@@ -64,7 +65,7 @@ input[type="text"], select, textarea { 
 .btn-map {
     display: inline-block;
     padding: 3px 8px; 
-    margin-left: 10px;
+    margin-left: 0; /* 讓 margin 由 info-location 控制 */
     background-color: #4285F4;
     color: white !important;
     text-decoration: none;
