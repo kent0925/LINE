@@ -18,26 +18,33 @@ h1 { color: #00b900; border-bottom: 3px solid #00b900; padding-bottom: 10px; mar
     line-height: 1.5; 
 }
 
-/* ⭐️ 修正一新增：讓活動資訊標籤（例如：地點:）對齊 */
+/* 讓活動資訊標籤對齊 */
 .info-card p strong {
     display: inline-block;
-    min-width: 40px; 
-    text-align: justify; 
+    min-width: 40px; 
+    text-align: justify; 
     text-align-last: justify;
-    margin-right: 5px; 
+    margin-right: 5px; 
 }
-/* 結束修正一新增 */
+
+/* ⭐️ 新增修正：確保地址內容不會因隱藏字符而換行或佔用額外空間 ⭐️ */
+.info-card #info-location {
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+/* 結束修正 */
 
 label { display:block; margin-top:10px; font-weight:bold; }
 
-/* 修正二確認：包含 textarea 並使用 border-box */
-input[type="text"], select, textarea { 
-    width:100%; 
-    padding:10px; 
-    margin-top:5px; 
-    border:1px solid #ccc; 
-    border-radius:4px; 
-    box-sizing:border-box; 
+/* 確認包含 textarea 並使用 border-box */
+input[type="text"], select, textarea { 
+    width:100%; 
+    padding:10px; 
+    margin-top:5px; 
+    border:1px solid #ccc; 
+    border-radius:4px; 
+    box-sizing:border-box; 
 }
 
 .btn { padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin:5px; }
@@ -94,7 +101,7 @@ input[type="text"], select, textarea {
     
     <p style="display: flex; align-items: center; flex-wrap: wrap;"> 
         <strong>地點:</strong> 
-        <span id="info-location"></span>         <a id="info-map-link" href="#" target="_blank" aria-label="開啟 Google 地圖" class="btn-map">📌 開啟地圖</a>
+        <span id="info-location"></span><a id="info-map-link" href="#" target="_blank" aria-label="開啟 Google 地圖" class="btn-map">📌 開啟地圖</a>
     </p>
 </div>
 
@@ -129,7 +136,7 @@ input[type="text"], select, textarea {
 
 <script>
 // ⭐ 請將此 URL 替換為您的 GAS 部署 URL
-const GAS_URL='https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec'; 
+const GAS_URL='https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec'; 
 let LINE_UID='', LINE_NICKNAME='', CURRENT_EVENT_ID=null, ALL_EVENTS=[];
 
 async function initializeLiff(){
@@ -194,13 +201,13 @@ async function loadStatsAndStatus(eventId, force=false){
         document.getElementById('total-attendees').textContent = data.totalAttendees;
         const ul = document.getElementById('registered-list');
         ul.innerHTML = '';
-        
+        
         // 顯示報名者和來賓姓名
         data.registeredUsers.forEach(u=>{
             let guestStr = u.guestNames ? ` (來賓: ${u.guestNames})` : '';
             ul.innerHTML += `<li>${u.name} (${u.attendees}人)${guestStr}</li>`;
         });
-        
+        
         if(data.userStatus){
             document.getElementById('attendees-count').value = data.userStatus.Attendees_Count||1;
             document.getElementById('guest-names').value = data.userStatus.Guest_Names||'';
