@@ -182,9 +182,12 @@ function refreshStats() {
       document.getElementById('totalCount').textContent = res.totalAttendees;
       const ul = document.getElementById('userList');
       ul.innerHTML = '';
-      (res.registeredUsers||[]).forEach(n=>{
-        const li=document.createElement('li'); li.textContent=n; ul.appendChild(li);
+      (res.userStatusList||[]).forEach(u=>{
+        const li=document.createElement('li');
+        li.textContent = `${u.nickname} (${u.attendeesCount}人)`;
+        ul.appendChild(li);
       });
+
       document.getElementById('userStatus').textContent = res.userStatus ?
         `您的狀態：${res.userStatus.Status}，人數：${res.userStatus.Attendees_Count}` :
         '您尚未報名此活動';
