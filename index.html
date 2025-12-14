@@ -27,7 +27,6 @@ input[type="text"], select, textarea { width: 100%; padding: 10px; margin-top: 5
 .stats-list { list-style: none; padding-left: 0; max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 4px; }
 .stats-list li { padding: 5px 0; border-bottom: 1px dotted #eee; }
 .stats-list li:last-child { border-bottom: none; }
-#form-actions { display: flex; justify-content: space-around; }
 .loading { text-align: center; padding: 30px; }
 </style>
 </head>
@@ -68,10 +67,7 @@ input[type="text"], select, textarea { width: 100%; padding: 10px; margin-top: 5
 <textarea id="guest-names" rows="2" placeholder="例如：王小明, 陳小美"></textarea>
 
 <div class="btn-group">
-    <div id="form-actions">
-        <button class="btn btn-register" onclick="submitRegistration('register')">報名</button>
-        <button class="btn btn-cancel" onclick="submitRegistration('cancel')">取消報名</button>
-    </div>
+    <div id="form-actions"></div>
 </div>
 
 <div id="form-message" class="message"></div>
@@ -147,10 +143,27 @@ async function loadStatsAndStatus(eventId, force=false){
         const ul=document.getElementById('registered-list');
         ul.innerHTML='';
         data.registeredUsers.forEach(u=>ul.innerHTML+=`<li>${u.name} (${u.attendees}人)</li>`);
-        if(data.userStatus){
-            document.getElementById('attendees-count').value=data.userStatus.Attendees_Count||1;
-            document.getElementById('guest-names').value=data.userStatus.Guest_Names||'';
+
+        const attendeesCountEl = document.getElementById('attendees-count');
+        const guestNamesEl = document.getElementById('guest-names');
+        const actionsEl = document.getElementById('form-actions');
+        attendeesCountEl.value = 1;
+        guestNamesEl.value = '';
+        actionsEl.innerHTML = '';
+
+        if(data.userStatus && data.userStatus.Status === 'Registered'){
+            attendeesCountEl.value = data.userStatus.Attendees_Count||1;
+            guestNamesEl.value = data.userStatus.Guest_Names||'';
+            // 已報名 → 顯示取消與修改
+            actionsEl.innerHTML = `
+                <button class="btn btn-modify" onclick="submitRegistration('edit')">修改報名</button>
+                <button class="btn btn-cancel" onclick="submitRegistration('cancel')">取消報名</button>
+            `;
+        } else {
+            // 未報名 → 顯示報名
+            actionsEl.innerHTML = `<button class="btn btn-register" onclick="submitRegistration('register')">報名</button>`;
         }
+
         document.getElementById('statistics').style.display='block';
     }
 }
