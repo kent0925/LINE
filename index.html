@@ -7,6 +7,7 @@
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     
     <style>
+        /* 現代柔和配色方案 */
         :root {
             --primary-color: #00796b; 
             --secondary-color: #4db6ac; 
@@ -50,12 +51,13 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         
+        /* 統計區塊樣式調整 */
         .statistics-box {
             background-color: #e0f2f1; 
             border: 1px solid var(--stat-color);
             padding: 15px;
             border-radius: 8px;
-            margin-top: 30px;
+            margin-top: 30px; 
         }
         .statistics-box h3 {
             color: var(--stat-color);
@@ -185,7 +187,7 @@
 
         <div class="btn-group">
             <button type="button" id="signupBtn" class="hidden" onclick="handleSubmit('signup')">確認報名</button>
-            <button type="button" id="updateBtn" class="hidden" onclick="handleSubmit('update')">修改資料</button>
+            <button type="button" id="updateBtn" class="hidden" onclick="handleSubmit('update')">編輯報名</button>
             <button type="button" id="cancelBtn" class="hidden" onclick="handleSubmit('cancel')">取消報名</button>
         </div>
     </form>
@@ -202,12 +204,17 @@
 </div>
 
 <script>
+    // ================= 設定區 (請務必檢查和替換!) =================
     const LIFF_ID = "2008678090-b1Up4o0J"; 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzvve6noaM6oMKHwHfFazP7iVwWVWAY17Reyt3v-kt9yRHPR8diuFgY5xa0bjbN4OblOA/exec"; 
+    // 請替換成您的 Google Apps Script 部署 URL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbz8o600QT2UGE97PL10yPrjne0pTHHScrvps2huCcBYgEOXENl5l6NDhjTfgPu-GWTEGw/exec"; 
+    // =========================================
 
-    let ALL_EVENTS = [];
-    let USER_SIGNUP_DATA = {};
+    let ALL_EVENTS = []; 
+    let USER_SIGNUP_DATA = {}; 
     let ALL_EVENT_STATS = null; 
+    
+    // 定義有效的報名狀態 (用於前端判斷是否已報名)
     const SIGNUP_STATUSES = ['SIGNUP', 'UPDATE'];
 
     window.onload = async function() {
@@ -219,10 +226,14 @@
             await liff.init({ liffId: LIFF_ID });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
-                document.getElementById('lineName').value = profile.displayName;
-                document.getElementById('lineUserId').value = profile.userId;
-                document.getElementById('pageTitle').innerText = '活動報名表單 - ' + profile.displayName;
-                await fetchData(profile.userId);
+                const userName = profile.displayName;
+                const userId = profile.userId; 
+                
+                document.getElementById('lineName').value = userName;
+                document.getElementById('lineUserId').value = userId; 
+                document.getElementById('pageTitle').innerText = '活動報名表單 - ' + userName;
+
+                await fetchData(userId); 
             } else {
                 liff.login();
             }
@@ -235,16 +246,26 @@
         try {
             const loadingDiv = document.getElementById('loading');
             loadingDiv.innerText = '正在讀取活動資料...';
+
             const url = `${GAS_URL}?u=${encodeURIComponent(userId)}`; 
             const response = await fetch(url);
             const data = await response.json();
+
             loadingDiv.classList.add('hidden');
 
-            if (data.status === 'error') { alert("後端設定錯誤：" + data.message); return; }
+            if (data.status === 'error') {
+                alert("後端設定錯誤：" + data.message);
+                return;
+            }
 
             ALL_EVENTS = data.eventList || [];
-            ALL_EVENT_STATS = data.eventStats;
-            USER_SIGNUP_DATA = data.userData || {};
+            ALL_EVENT_STATS = data.eventStats; 
+            
+            if (data.userData && typeof data.userData === 'object') {
+                USER_SIGNUP_DATA = data.userData;
+            } else {
+                USER_SIGNUP_DATA = {};
+            }
 
             if (ALL_EVENTS.length === 0) {
                 document.getElementById('event-selection-area').innerHTML = '<div style="color:red; font-weight:bold;">目前沒有開放報名的活動！</div>';
@@ -252,8 +273,14 @@
             }
 
             populateEventSelect(ALL_EVENTS);
+
+            // 預設選取第一個活動
             let selectedEventId = ALL_EVENTS.length > 0 ? ALL_EVENTS[0].EventID : '';
-            if (selectedEventId) document.getElementById('event-select').value = selectedEventId;
+
+            if (selectedEventId) {
+                document.getElementById('event-select').value = selectedEventId;
+            }
+            
             handleEventSelection(); 
 
         } catch (err) {
@@ -262,18 +289,27 @@
         }
     }
 
+    // 填充下拉式選單 
     function populateEventSelect(events) {
         const select = document.getElementById('event-select');
-        select.innerHTML = '<option value="" disabled selected>-- 請選擇一個活動 --</option>'; 
+        select.innerHTML = '<option value="" disabled selected>-- 請選擇一個活動 --</option>'; // 清除舊選項
+        
         events.forEach(event => {
-            let optionText = `${event.Title} (${event.Time})`;
+            let optionText = `${event.Title} (${event.Time})`; 
+            
             const userStatus = USER_SIGNUP_DATA[event.EventID] ? USER_SIGNUP_DATA[event.EventID].status : 'NONE';
-            if (SIGNUP_STATUSES.includes(userStatus)) optionText += ' (已報名)';
-            else if (userStatus === 'CANCEL') optionText += ' (已取消)';
+
+            if (SIGNUP_STATUSES.includes(userStatus)) {
+                optionText += ' (已報名)';
+            } else if (userStatus === 'CANCEL') {
+                optionText += ' (已取消)';
+            }
+            
             select.innerHTML += `<option value="${event.EventID}">${optionText}</option>`;
         });
     }
 
+    // 處理活動選擇變更 (決定顯示 確認報名 / 編輯報名)
     function handleEventSelection() {
         const select = document.getElementById('event-select');
         const eventId = select.value;
@@ -289,34 +325,36 @@
         }
 
         document.getElementById('eventID').value = eventId; 
-        const selectedEvent = ALL_EVENTS.find(e => e.EventID === eventId);
-        const currentUserSignup = USER_SIGNUP_DATA[eventId];
 
+        const selectedEvent = ALL_EVENTS.find(e => e.EventID === eventId);
+        // 從 USER_SIGNUP_DATA 讀取該用戶對該活動的最新有效狀態
+        const currentUserSignup = USER_SIGNUP_DATA[eventId];
+        
         if (selectedEvent) {
             displayEventDetails(selectedEvent);
             detailsBox.classList.remove('hidden');
             updateStatisticsDisplay(eventId); 
 
+            // ====== 核心判斷邏輯：根據最新狀態決定按鈕顯示 ======
             const userStatus = currentUserSignup ? currentUserSignup.status : 'NONE';
-
-            // 🔒 核心修正：CANCEL 不可再報名
-            if (SIGNUP_STATUSES.includes(userStatus)) {
+            
+            // 判斷：最新狀態是否為 'SIGNUP' 或 'UPDATE' (即已報名)
+            const isSignedUpForCurrentEvent = SIGNUP_STATUSES.includes(userStatus);
+            
+            // 填充表單並顯示按鈕
+            if (isSignedUpForCurrentEvent) {
+                // **報名後狀態：** 顯示編輯和取消按鈕
                 document.getElementById('count').value = currentUserSignup.count;
                 document.getElementById('guests').value = currentUserSignup.guests;
-                showButtons('edit');
-
-            } else if (userStatus === 'CANCEL') {
-                document.getElementById('count').value = '1';
-                document.getElementById('guests').value = '';
-                showButtons('locked');
-                alert("您已取消報名，無法再報名此活動。");
-
+                showButtons('edit'); 
             } else {
+                // **報名前狀態：** 顯示確認報名按鈕
+                // 狀態可能是 'NONE' (從未報名) 或 'CANCEL' (已取消)
                 document.getElementById('count').value = '1';
                 document.getElementById('guests').value = '';
-                showButtons('new');
+                showButtons('new'); 
             }
-
+            
             form.classList.remove('hidden'); 
         } else {
             form.classList.add('hidden');
@@ -324,11 +362,12 @@
             statsBox.classList.add('hidden');
         }
     }
-
+    
+    // 顯示活動詳細資訊 
     function displayEventDetails(data) {
         document.getElementById('eventTitle').innerText = data.Title || "活動";
         document.getElementById('organizer').innerText = data.Organizer || "";
-        document.getElementById('time').innerText = data.Time;
+        document.getElementById('time').innerText = data.Time; 
         document.getElementById('location').innerText = data.Location || ""; 
         document.getElementById('address').innerText = data.Address || ""; 
 
@@ -339,49 +378,50 @@
         }
     }
 
+    // 更新活動統計數據顯示 
     function updateStatisticsDisplay(eventId) {
         const statsBox = document.getElementById('statistics-box');
         const currentStats = ALL_EVENT_STATS ? ALL_EVENT_STATS[eventId] : null;
 
-        statsBox.classList.remove('hidden');
-
         if (currentStats) {
+            statsBox.classList.remove('hidden');
             document.getElementById('statSignupCount').innerText = currentStats.signupCount;
             document.getElementById('statTotalCount').innerText = currentStats.totalCount;
             
             let nameListHtml = currentStats.nameList.map((name, index) => {
+                // 每 5 個名字換行
                 return (index > 0 && index % 5 === 0) ? `\n${name}` : name;
             }).join('、');
             
             document.getElementById('nameList').innerText = nameListHtml || "目前尚無報名者。";
         } else {
+            statsBox.classList.remove('hidden'); 
             document.getElementById('statSignupCount').innerText = 0;
             document.getElementById('statTotalCount').innerText = 0;
             document.getElementById('nameList').innerText = "目前尚無報名者。";
         }
     }
 
+    // 顯示報名/修改/取消按鈕邏輯
     function showButtons(mode) {
         const signupBtn = document.getElementById('signupBtn');
         const updateBtn = document.getElementById('updateBtn');
         const cancelBtn = document.getElementById('cancelBtn');
 
-        signupBtn.classList.add('hidden');
-        updateBtn.classList.add('hidden');
-        cancelBtn.classList.add('hidden');
-
         if (mode === 'edit') {
+            // 已經報名此活動：顯示編輯和取消
+            signupBtn.classList.add('hidden');
             updateBtn.classList.remove('hidden');
             cancelBtn.classList.remove('hidden');
-        }
-
-        if (mode === 'new') {
+        } else {
+            // 尚未報名此活動或已取消：只顯示確認報名
             signupBtn.classList.remove('hidden');
+            updateBtn.classList.add('hidden');
+            cancelBtn.classList.add('hidden');
         }
-
-        // locked → 不顯示任何按鈕
     }
 
+    // 統一處理送出 
     async function handleSubmit(action) {
         if (action === 'cancel' && !confirm("確定要取消報名嗎？此操作將取消您目前的有效報名紀錄。")) return;
 
@@ -389,7 +429,11 @@
         const btn = document.getElementById(btnId);
         const originalText = btn.innerText;
         
-        btn.disabled = true;
+        // 鎖定所有按鈕防止重複點擊
+        document.getElementById('signupBtn').disabled = true;
+        document.getElementById('updateBtn').disabled = true;
+        document.getElementById('cancelBtn').disabled = true;
+        
         btn.innerText = "處理中...";
 
         const formData = {
@@ -401,39 +445,42 @@
             guests: document.getElementById('guests').value
         };
 
-        if (!formData.eventId) {
-            alert("請先選擇一個活動！");
-            btn.disabled = false;
-            btn.innerText = originalText;
-            return;
-        }
-        
-        if ((action === 'signup' || action === 'update') && (parseInt(formData.count) <= 0 || !formData.count)) {
-             alert("參加人數至少為 1 人 (含本人)！");
-             btn.disabled = false;
+        if (!formData.eventId || (action !== 'cancel' && (parseInt(formData.count) <= 0 || !formData.count))) {
+             alert(formData.eventId ? "參加人數至少為 1 人 (含本人)！" : "請先選擇一個活動！");
+             // 錯誤時，恢復所有按鈕狀態
+             document.getElementById('signupBtn').disabled = false;
+             document.getElementById('updateBtn').disabled = false;
+             document.getElementById('cancelBtn').disabled = false;
              btn.innerText = originalText;
              return;
         }
 
         try {
-            await fetch(GAS_URL, {
+            const response = await fetch(GAS_URL, {
                 method: 'POST',
                 body: JSON.stringify(formData),
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain' }
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'text/plain' } 
             });
-
+            
             alert(action === 'cancel' ? '✅ 已成功取消報名！' : '✅ 資料已成功送出！');
-
-            setTimeout(() => {
-                if (liff.isInClient()) liff.closeWindow();
-            }, 500);
+            
+            // 成功提交後，無論 LIFF 是否關閉，都必須重新載入數據
+            if (liff.isInClient()) { 
+                 liff.closeWindow();
+            } else {
+                 // 瀏覽器環境下，強制刷新頁面，讓 doGet 重新獲取最新狀態
+                 window.location.reload(); 
+            }
 
         } catch (err) {
             console.error("提交錯誤:", err);
-            alert("送出報名資料失敗，請稍後再試。");
-        } finally {
-            btn.disabled = false;
+            alert('❌ 發生錯誤，請重試！' + (err.message || ""));
+            
+            // 錯誤時，恢復所有按鈕狀態
+            document.getElementById('signupBtn').disabled = false;
+            document.getElementById('updateBtn').disabled = false;
+            document.getElementById('cancelBtn').disabled = false;
             btn.innerText = originalText;
         }
     }
