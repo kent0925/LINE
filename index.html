@@ -42,10 +42,11 @@ input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px;
 <div id="select-message" class="message"></div>
 </div>
 
-<div id="activity-info" class="info-card" style="display:none;">
+<<div id="activity-info" class="info-card" style="display:none;">
 <h2>活動資訊 - <span id="info-title"></span></h2>
 <p><strong>主辦:</strong> <span id="info-organizer"></span></p>
 <p><strong>時間:</strong> <span id="info-time"></span></p>
+<p><strong>店名:</strong> <span id="info-venue-name"></span></p> 
 <p><strong>地點:</strong> <span id="info-location"></span> (<a id="info-map-link" href="#" target="_blank">Google 地圖</a>)</p>
 </div>
 
@@ -120,17 +121,20 @@ function formatLocalTime(isoStr){
 function pad(n){ return n<10 ? '0'+n : n; }
 
 function selectEvent(eventId){
-    if(!eventId) return;
-    CURRENT_EVENT_ID = eventId;
-    const ev = ALL_EVENTS.find(e=>e.EventID===eventId);
-    document.getElementById('activity-info').style.display='block';
-    document.getElementById('info-title').textContent = ev.Title;
-    document.getElementById('info-organizer').textContent = ev.Organizer;
-    document.getElementById('info-time').textContent = formatLocalTime(ev.Time);
-    document.getElementById('info-location').textContent = ev.Address;
-    document.getElementById('info-map-link').href = ev.MapUrl;
-    document.getElementById('registration-form').style.display='block';
-    loadStatsAndStatus(eventId);
+    if(!eventId) return;
+    CURRENT_EVENT_ID = eventId;
+    const ev = ALL_EVENTS.find(e=>e.EventID===eventId);
+    document.getElementById('activity-info').style.display='block';
+    document.getElementById('info-title').textContent = ev.Title;
+    document.getElementById('info-organizer').textContent = ev.Organizer;
+    document.getElementById('info-time').textContent = formatLocalTime(ev.Time);
+    
+    document.getElementById('info-venue-name').textContent = ev.VenueName; // ⭐️ 新增：讀取並顯示 VenueName
+    
+    document.getElementById('info-location').textContent = ev.Address;
+    document.getElementById('info-map-link').href = ev.MapUrl;
+    document.getElementById('registration-form').style.display='block';
+    loadStatsAndStatus(eventId);
 }
 
 async function loadStatsAndStatus(eventId, force=false){
