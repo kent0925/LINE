@@ -11,12 +11,13 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20
 h1 { color: #00b900; border-bottom: 3px solid #00b900; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
 .info-card, .form-section, .stats-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; }
 
-/* 減少 info-card 內段落的上下間距 */
+/* ⭐️ 修正處：將上下間距進一步縮小至 2px ⭐️ */
 .info-card p {
-    margin-top: 5px;
-    margin-bottom: 5px;
+    margin-top: 2px;
+    margin-bottom: 2px;
     line-height: 1.5; 
 }
+/* 結束修正 */
 
 label { display:block; margin-top:10px; font-weight:bold; }
 input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; }
@@ -178,7 +179,6 @@ async function loadStatsAndStatus(eventId, force=false){
         
         // 顯示報名者和來賓姓名
         data.registeredUsers.forEach(u=>{
-            // 格式化來賓姓名
             let guestStr = u.guestNames ? ` (來賓: ${u.guestNames})` : '';
             ul.innerHTML += `<li>${u.name} (${u.attendees}人)${guestStr}</li>`;
         });
