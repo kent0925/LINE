@@ -10,25 +10,20 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20
 .container { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
 h1 { color: #00b900; border-bottom: 3px solid #00b900; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
 .info-card, .form-section, .stats-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; }
-.info-card h2, .form-section h2 { margin-top: 0; color: #333; }
-label { display: block; margin-top: 10px; font-weight: bold; }
-input[type="text"], select, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-.btn-group { margin-top: 20px; text-align: center; }
-.btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; transition: background-color 0.3s; }
-.btn-register { background-color: #00b900; color: white; }
-.btn-register:hover { background-color: #009900; }
-.btn-cancel { background-color: #ff3b30; color: white; }
-.btn-cancel:hover { background-color: #cc0000; }
-.btn-modify { background-color: #007aff; color: white; }
-.btn-modify:hover { background-color: #005bb5; }
-.message { padding: 10px; margin-top: 15px; border-radius: 4px; text-align: center; font-weight: bold; display: none; }
-.success { background-color: #e6ffe6; color: #009900; border: 1px solid #009900; }
-.error { background-color: #ffe6e6; color: #cc0000; border: 1px solid #cc0000; }
-.stats-list { list-style: none; padding-left: 0; max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 4px; }
-.stats-list li { padding: 5px 0; border-bottom: 1px dotted #eee; }
-.stats-list li:last-child { border-bottom: none; }
-#form-actions { display: flex; justify-content: space-around; }
-.loading { text-align: center; padding: 30px; }
+label { display:block; margin-top:10px; font-weight:bold; }
+input[type="text"], select, textarea { width:100%; padding:10px; margin-top:5px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; }
+.btn { padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin:5px; }
+.btn-register { background-color:#00b900; color:white; }
+.btn-cancel { background-color:#ff3b30; color:white; }
+.btn-modify { background-color:#007aff; color:white; }
+.message { padding:10px; margin-top:15px; border-radius:4px; text-align:center; font-weight:bold; display:none; }
+.success { background-color:#e6ffe6; color:#009900; border:1px solid #009900; }
+.error { background-color:#ffe6e6; color:#cc0000; border:1px solid #cc0000; }
+.stats-list { list-style:none; padding-left:0; max-height:150px; overflow-y:auto; border:1px solid #eee; padding:10px; border-radius:4px; }
+.stats-list li { padding:5px 0; border-bottom:1px dotted #eee; }
+.stats-list li:last-child { border-bottom:none; }
+#form-actions { display:flex; justify-content:space-around; }
+.loading { text-align:center; padding:30px; }
 </style>
 </head>
 <body>
@@ -36,15 +31,13 @@ input[type="text"], select, textarea { width: 100%; padding: 10px; margin-top: 5
 <div class="container">
 <h1>多活動報名表單</h1>
 
-<div id="loading-spinner" class="loading">
-    <p>載入中，請稍候...</p>
-</div>
+<div id="loading-spinner" class="loading"><p>載入中，請稍候...</p></div>
 
 <div id="event-selection" class="form-section" style="display:none;">
 <h2>選擇報名活動</h2>
 <label for="event-select">可報名活動列表</label>
 <select id="event-select" onchange="selectEvent(this.value)">
-    <option value="">-- 請選擇一項活動 --</option>
+  <option value="">-- 請選擇一項活動 --</option>
 </select>
 <div id="select-message" class="message"></div>
 </div>
@@ -67,12 +60,10 @@ input[type="text"], select, textarea { width: 100%; padding: 10px; margin-top: 5
 <label for="guest-names">來賓姓名 (逗號分隔)</label>
 <textarea id="guest-names" rows="2" placeholder="例如：王小明, 陳小美"></textarea>
 
-<div class="btn-group">
-    <div id="form-actions">
-        <button class="btn btn-register" onclick="submitRegistration('register')">報名</button>
-        <button class="btn btn-cancel" onclick="submitRegistration('cancel')">取消報名</button>
-        <button class="btn btn-modify" onclick="submitRegistration('edit')">編輯報名</button>
-    </div>
+<div id="form-actions">
+  <button class="btn btn-register" onclick="submitRegistration('register')">報名</button>
+  <button class="btn btn-cancel" onclick="submitRegistration('cancel')">取消報名</button>
+  <button class="btn btn-modify" onclick="submitRegistration('edit')">編輯</button>
 </div>
 
 <div id="form-message" class="message"></div>
@@ -88,29 +79,18 @@ input[type="text"], select, textarea { width: 100%; padding: 10px; margin-top: 5
 </div>
 
 <script>
-const GAS_URL='https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec';
+const GAS_URL='YOUR_GAS_DEPLOY_URL';
 let LINE_UID='', LINE_NICKNAME='', CURRENT_EVENT_ID=null, ALL_EVENTS=[];
 
-// 將 ISO 時間固定轉台北時間
-function formatTpeTime(isoString){
-    const d = new Date(isoString);
-    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-    const tpe = new Date(utc + 8*3600*1000);
-    return `${tpe.getFullYear()}/${('0'+(tpe.getMonth()+1)).slice(-2)}/${('0'+tpe.getDate()).slice(-2)} ${('0'+tpe.getHours()).slice(-2)}:${('0'+tpe.getMinutes()).slice(-2)}`;
-}
-
 async function initializeLiff(){
-    liff.init({liffId:'2008678090-aXTesgDK'})
-    .then(()=>{
-        if(!liff.isLoggedIn()){liff.login(); return;}
-        liff.getProfile().then(profile=>{
-            LINE_UID=profile.userId;
-            LINE_NICKNAME=profile.displayName;
-            document.getElementById('line-nickname').textContent=LINE_NICKNAME;
-            document.getElementById('line-uid').value=LINE_UID;
-            loadEventsList();
-        }).catch(err=>{console.error(err); alert('取得個人資料失敗');});
-    }).catch(err=>{console.error(err); alert('LIFF初始化失敗');});
+    await liff.init({liffId:'YOUR_LIFF_ID'});
+    if(!liff.isLoggedIn()){ liff.login(); return; }
+    const profile = await liff.getProfile();
+    LINE_UID = profile.userId;
+    LINE_NICKNAME = profile.displayName;
+    document.getElementById('line-nickname').textContent = LINE_NICKNAME;
+    document.getElementById('line-uid').value = LINE_UID;
+    loadEventsList();
 }
 
 async function loadEventsList(){
@@ -121,7 +101,7 @@ async function loadEventsList(){
         const sel=document.getElementById('event-select');
         sel.innerHTML=`<option value="">-- 請選擇一項活動 --</option>`;
         ALL_EVENTS.forEach(ev=>{
-            let label=`${ev.Title} (${formatTpeTime(ev.Time)})`;
+            let label=`${ev.Title} (${formatLocalTime(ev.Time)})`;
             if(ev.UserRegistered) label+=' [已報名]';
             sel.innerHTML+=`<option value="${ev.EventID}">${label}</option>`;
         });
@@ -133,32 +113,38 @@ async function loadEventsList(){
     }
 }
 
+function formatLocalTime(isoStr){
+    const d = new Date(isoStr);
+    return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function pad(n){ return n<10 ? '0'+n : n; }
+
 function selectEvent(eventId){
     if(!eventId) return;
-    CURRENT_EVENT_ID=eventId;
-    const ev=ALL_EVENTS.find(e=>e.EventID===eventId);
+    CURRENT_EVENT_ID = eventId;
+    const ev = ALL_EVENTS.find(e=>e.EventID===eventId);
     document.getElementById('activity-info').style.display='block';
-    document.getElementById('info-title').textContent=ev.Title;
-    document.getElementById('info-organizer').textContent=ev.Organizer;
-    document.getElementById('info-time').textContent=formatTpeTime(ev.Time);
-    document.getElementById('info-location').textContent=ev.Address;
-    document.getElementById('info-map-link').href=ev.MapUrl;
+    document.getElementById('info-title').textContent = ev.Title;
+    document.getElementById('info-organizer').textContent = ev.Organizer;
+    document.getElementById('info-time').textContent = formatLocalTime(ev.Time);
+    document.getElementById('info-location').textContent = ev.Address;
+    document.getElementById('info-map-link').href = ev.MapUrl;
     document.getElementById('registration-form').style.display='block';
     loadStatsAndStatus(eventId);
 }
 
 async function loadStatsAndStatus(eventId, force=false){
     if(!eventId) return;
-    const res=await fetch(`${GAS_URL}?action=getStatsAndStatus&lineUid=${LINE_UID}&eventId=${eventId}`);
-    const data=await res.json();
+    const res = await fetch(`${GAS_URL}?action=getStatsAndStatus&lineUid=${LINE_UID}&eventId=${eventId}`);
+    const data = await res.json();
     if(data.status==='success'){
-        document.getElementById('total-attendees').textContent=data.totalAttendees;
-        const ul=document.getElementById('registered-list');
-        ul.innerHTML='';
+        document.getElementById('total-attendees').textContent = data.totalAttendees;
+        const ul = document.getElementById('registered-list');
+        ul.innerHTML = '';
         data.registeredUsers.forEach(u=>ul.innerHTML+=`<li>${u.name} (${u.attendees}人)</li>`);
         if(data.userStatus){
-            document.getElementById('attendees-count').value=data.userStatus.Attendees_Count||1;
-            document.getElementById('guest-names').value=data.userStatus.Guest_Names||'';
+            document.getElementById('attendees-count').value = data.userStatus.Attendees_Count||1;
+            document.getElementById('guest-names').value = data.userStatus.Guest_Names||'';
         }
         document.getElementById('statistics').style.display='block';
     }
@@ -166,22 +152,22 @@ async function loadStatsAndStatus(eventId, force=false){
 
 async function submitRegistration(action){
     if(!CURRENT_EVENT_ID) return;
-    const payload={
-        action:action,
-        eventId:CURRENT_EVENT_ID,
-        lineUid:LINE_UID,
-        lineNickname:LINE_NICKNAME,
-        attendeesCount:parseInt(document.getElementById('attendees-count').value),
-        guestNames:document.getElementById('guest-names').value
+    const payload = {
+        action: action,
+        eventId: CURRENT_EVENT_ID,
+        lineUid: LINE_UID,
+        lineNickname: LINE_NICKNAME,
+        attendeesCount: parseInt(document.getElementById('attendees-count').value),
+        guestNames: document.getElementById('guest-names').value
     };
-    const res=await fetch(GAS_URL,{method:'POST',body:JSON.stringify(payload)});
-    const data=await res.json();
-    const msgEl=document.getElementById('form-message');
+    const res = await fetch(GAS_URL,{method:'POST',body:JSON.stringify(payload)});
+    const data = await res.json();
+    const msgEl = document.getElementById('form-message');
     msgEl.style.display='block';
-    if(data.status==='success'){ msgEl.className='message success'; msgEl.textContent=data.message; }
-    else{ msgEl.className='message error'; msgEl.textContent=data.message; }
+    if(data.status==='success'){ msgEl.className='message success'; msgEl.textContent = data.message; }
+    else{ msgEl.className='message error'; msgEl.textContent = data.message; }
     loadStatsAndStatus(CURRENT_EVENT_ID,true);
-    loadEventsList(); // 更新選單上的已報名標示
+    loadEventsList();
 }
 
 initializeLiff();
