@@ -12,7 +12,6 @@ body {
   padding: 20px;
   background-color: #f5f5f5;
 }
-
 .container {
   background-color: white;
   padding: 20px;
@@ -21,7 +20,6 @@ body {
   max-width: 600px;
   margin: 0 auto;
 }
-
 h1 {
   color: #00b900;
   border-bottom: 3px solid #00b900;
@@ -29,7 +27,6 @@ h1 {
   margin-bottom: 20px;
   text-align: center;
 }
-
 .info-card, .form-section, .stats-section {
   margin-bottom: 20px;
   padding: 15px;
@@ -37,22 +34,18 @@ h1 {
   border-radius: 6px;
 }
 
-/* =========================
-   活動資訊 對齊關鍵樣式
-   ========================= */
+/* === 活動資訊對齊 === */
 .info-card p {
   display: flex;
   align-items: flex-start;
   margin: 2px 0;
   line-height: 1.5;
 }
-
 .info-card p strong {
-  width: 48px;        /* 左側標籤固定寬度 */
+  width: 48px;
   flex-shrink: 0;
   margin-right: 6px;
 }
-
 .info-card p span {
   flex: 1;
   min-width: 0;
@@ -70,97 +63,42 @@ h1 {
   font-size: 0.9em;
   white-space: nowrap;
 }
+.btn-map:hover { background-color: #357ae8; }
 
-.btn-map:hover {
-  background-color: #357ae8;
-}
-
-/* 手機版 */
+/* 手機 */
 @media (max-width: 480px) {
-  .info-card p {
-    flex-direction: column;
-  }
-
-  .info-card p strong {
-    width: auto;
-    margin-bottom: 2px;
-  }
-
-  .btn-map {
-    margin: 6px 0 0 0;
-  }
+  .info-card p { flex-direction: column; }
+  .info-card p strong { width: auto; }
+  .btn-map { margin: 6px 0 0 0; }
 }
 
-/* ========================= */
-
-label {
-  display: block;
-  margin-top: 10px;
-  font-weight: bold;
-}
-
+label { display:block; margin-top:10px; font-weight:bold; }
 input[type="text"], select, textarea {
-  width: 100%;
-  padding: 10px;
-  margin-top: 5px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
+  width:100%; padding:10px; margin-top:5px;
+  border:1px solid #ccc; border-radius:4px; box-sizing:border-box;
 }
 
-.btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: bold;
-  margin: 5px;
-}
-
+.btn { padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin:5px; }
 .btn-register { background-color:#00b900; color:white; }
-.btn-cancel   { background-color:#ff3b30; color:white; }
-.btn-modify   { background-color:#007aff; color:white; }
+.btn-cancel { background-color:#ff3b30; color:white; }
+.btn-modify { background-color:#007aff; color:white; }
 
 .message {
-  padding: 10px;
-  margin-top: 15px;
-  border-radius: 4px;
-  text-align: center;
-  font-weight: bold;
-  display: none;
+  padding:10px; margin-top:15px; border-radius:4px;
+  text-align:center; font-weight:bold; display:none;
 }
-
 .success { background-color:#e6ffe6; color:#009900; border:1px solid #009900; }
-.error   { background-color:#ffe6e6; color:#cc0000; border:1px solid #cc0000; }
+.error { background-color:#ffe6e6; color:#cc0000; border:1px solid #cc0000; }
 
 .stats-list {
-  list-style: none;
-  padding-left: 0;
-  max-height: 150px;
-  overflow-y: auto;
-  border: 1px solid #eee;
-  padding: 10px;
-  border-radius: 4px;
+  list-style:none; padding-left:0; max-height:150px;
+  overflow-y:auto; border:1px solid #eee; padding:10px; border-radius:4px;
 }
+.stats-list li { padding:5px 0; border-bottom:1px dotted #eee; }
+.stats-list li:last-child { border-bottom:none; }
 
-.stats-list li {
-  padding: 5px 0;
-  border-bottom: 1px dotted #eee;
-}
-
-.stats-list li:last-child {
-  border-bottom: none;
-}
-
-#form-actions {
-  display: flex;
-  justify-content: space-around;
-}
-
-.loading {
-  text-align: center;
-  padding: 30px;
-}
+#form-actions { display:flex; justify-content:space-around; }
+.loading { text-align:center; padding:30px; }
 </style>
 </head>
 
@@ -222,52 +160,132 @@ input[type="text"], select, textarea {
 </div>
 
 <script>
+/* ====== 設定 ====== */
 const GAS_URL='https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec';
+const LIFF_ID='2008678090-aXTesgDK';
+
 let LINE_UID='', LINE_NICKNAME='', CURRENT_EVENT_ID=null, ALL_EVENTS=[];
 
+/* ====== 初始化 LIFF ====== */
 async function initializeLiff(){
-  await liff.init({ liffId:'2008678090-aXTesgDK' });
-  if(!liff.isLoggedIn()){ liff.login(); return; }
-  const profile = await liff.getProfile();
-  LINE_UID = profile.userId;
-  LINE_NICKNAME = profile.displayName;
-  document.getElementById('line-nickname').textContent = LINE_NICKNAME;
-  loadEventsList();
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if(!liff.isLoggedIn()){
+      liff.login();
+      return;
+    }
+    const profile = await liff.getProfile();
+    LINE_UID = profile.userId;
+    LINE_NICKNAME = profile.displayName;
+    document.getElementById('line-nickname').textContent = LINE_NICKNAME;
+
+    loadEventsList();
+  } catch(err){
+    alert('LIFF 初始化失敗，請確認從 LINE 開啟\n' + err);
+  }
 }
 
+/* ====== 工具 ====== */
 function formatLocalTime(iso){
   const d = new Date(iso);
   return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
+/* ====== 載入活動列表 ====== */
 async function loadEventsList(){
   const res = await fetch(`${GAS_URL}?action=getEventsList&lineUid=${LINE_UID}`);
   const data = await res.json();
+
   ALL_EVENTS = data.events || [];
   const sel = document.getElementById('event-select');
   sel.innerHTML = '<option value="">-- 請選擇一項活動 --</option>';
+
   ALL_EVENTS.forEach(ev=>{
-    sel.innerHTML += `<option value="${ev.EventID}">${ev.Title}</option>`;
+    sel.innerHTML += `<option value="${ev.EventID}">
+      ${ev.Title} (${formatLocalTime(ev.Time)})
+    </option>`;
   });
-  document.getElementById('event-selection').style.display='block';
+
+  const countSel = document.getElementById('attendees-count');
+  countSel.innerHTML='';
+  for(let i=1;i<=10;i++){
+    countSel.innerHTML+=`<option value="${i}">${i}</option>`;
+  }
+
   document.getElementById('loading-spinner').style.display='none';
+  document.getElementById('event-selection').style.display='block';
 }
 
-function selectEvent(id){
-  const ev = ALL_EVENTS.find(e=>e.EventID===id);
+/* ====== 選擇活動 ====== */
+function selectEvent(eventId){
+  const ev = ALL_EVENTS.find(e=>e.EventID===eventId);
   if(!ev) return;
-  CURRENT_EVENT_ID=id;
+
+  CURRENT_EVENT_ID = eventId;
   document.getElementById('activity-info').style.display='block';
+  document.getElementById('registration-form').style.display='block';
+
   document.getElementById('info-title').textContent = ev.Title;
   document.getElementById('info-organizer').textContent = ev.Organizer;
   document.getElementById('info-time').textContent = formatLocalTime(ev.Time);
   document.getElementById('info-venue-name').textContent = ev.VenueName;
   document.getElementById('info-location').textContent = ev.Address;
   document.getElementById('info-map-link').href = ev.MapUrl;
-  document.getElementById('registration-form').style.display='block';
+
+  loadStatsAndStatus(eventId);
 }
 
+/* ====== 載入統計 ====== */
+async function loadStatsAndStatus(eventId){
+  const res = await fetch(`${GAS_URL}?action=getStatsAndStatus&lineUid=${LINE_UID}&eventId=${eventId}`);
+  const data = await res.json();
+
+  document.getElementById('total-attendees').textContent = data.totalAttendees || 0;
+  const ul = document.getElementById('registered-list');
+  ul.innerHTML='';
+
+  (data.registeredUsers||[]).forEach(u=>{
+    ul.innerHTML+=`<li>${u.name} (${u.attendees}人)</li>`;
+  });
+
+  document.getElementById('statistics').style.display='block';
+}
+
+/* ====== 送出報名 ====== */
+async function submitRegistration(action){
+  if(!CURRENT_EVENT_ID) return;
+
+  const payload = {
+    action,
+    eventId: CURRENT_EVENT_ID,
+    lineUid: LINE_UID,
+    lineNickname: LINE_NICKNAME,
+    attendeesCount: parseInt(document.getElementById('attendees-count').value),
+    guestNames: document.getElementById('guest-names').value
+  };
+
+  const res = await fetch(GAS_URL,{
+    method:'POST',
+    body:JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  const msg = document.getElementById('form-message');
+  msg.style.display='block';
+
+  msg.className = data.status==='success'
+    ? 'message success'
+    : 'message error';
+
+  msg.textContent = data.message;
+
+  loadStatsAndStatus(CURRENT_EVENT_ID);
+  loadEventsList();
+}
+
+/* ====== 啟動 ====== */
 initializeLiff();
 </script>
+
 </body>
 </html>
