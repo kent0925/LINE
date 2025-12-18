@@ -262,8 +262,8 @@ async function loadEventsList(){
     sel.innerHTML = '<option value="">-- 請選擇活動場次 --</option>';
 
     ALL_EVENTS.forEach(ev=>{
-      // UX 優化：在列表文字中顯示是否已報名
-      const registeredTag = ev.UserRegistered ? '【✅ 已報名】' : '';
+      // ⭐ 這裡讀取與 GAS 統一的 IsRegistered
+      const registeredTag = ev.IsRegistered ? '【✅ 已報名】' : '';
       const optionText = `${registeredTag} ${ev.Title} (${formatLocalTime(ev.Time)})`;
       
       const opt = document.createElement('option');
@@ -355,14 +355,13 @@ async function submitRegistration(action){
     msg.textContent = data.message;
 
     if (data.status === 'success') {
-      // UX 優化：報名或取消成功後，顯示提示並自動關閉視窗
+      // ⭐ 報名或取消成功後自動關閉視窗
       if (action === 'register' || action === 'cancel') {
         msg.textContent = data.message + ' 視窗即將於 2 秒後關閉...';
         setTimeout(() => {
           liff.closeWindow();
         }, 2200);
       } else {
-        // 更新但不關閉（用於「編輯」動作）
         loadStatsAndStatus(CURRENT_EVENT_ID);
         loadEventsList();
       }
