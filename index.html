@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>活動報名系統</title>
+<title>活動預約系統</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
@@ -129,8 +129,8 @@ input:focus, select:focus, textarea:focus {
 /* 狀態標籤樣式 */
 .time-tag {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 8px;
+  padding: 6px 14px;
+  border-radius: 10px;
   font-size: 0.85rem;
   font-weight: bold;
   margin-top: 10px;
@@ -210,8 +210,12 @@ input:focus, select:focus, textarea:focus {
       <p>🏠 <strong>場地：</strong><span id="info-venue-name"></span></p>
       <p>📍 <strong>地點：</strong><span id="info-location"></span> 
          <a id="info-map-link" href="#" target="_blank" style="color:var(--accent-blue); text-decoration:none; margin-left:8px;">🗺️ 地圖</a></p>
-      <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
-      <p>⏳ <strong style="color:var(--accent-red);">報名截止：</strong><span id="info-close-time"></span></p>
+      
+      <div id="deadline-container">
+        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+        <p>⏳ <strong style="color:var(--accent-red);">報名截止：</strong><span id="info-close-time"></span></p>
+      </div>
+      
       <div id="time-status-tag" class="time-tag"></div>
     </div>
   </div>
@@ -221,7 +225,6 @@ input:focus, select:focus, textarea:focus {
     <p style="background:#f1f5f9; padding:10px 15px; border-radius:10px; font-size:0.9rem;">
       <strong>姓名：</strong> <span id="line-nickname" style="color:var(--line-dark); font-weight:bold;">載入中...</span>
     </p>
-    <input type="hidden" id="line-uid">
 
     <label for="attendees-count">參加人數</label>
     <select id="attendees-count"></select>
@@ -246,8 +249,8 @@ input:focus, select:focus, textarea:focus {
 </div>
 
 <script>
-const GAS_URL='https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec';
-const LIFF_ID='2008678090-aXTesgDK';
+const GAS_URL='你的_GAS_部署網址';
+const LIFF_ID='你的_LIFF_ID';
 let LINE_UID='', LINE_NICKNAME='', CURRENT_EVENT_ID=null, ALL_EVENTS=[];
 
 async function initializeLiff(){
@@ -260,13 +263,14 @@ async function initializeLiff(){
     document.getElementById('line-nickname').textContent = LINE_NICKNAME;
     loadEventsList();
   } catch(err){
-    console.error('LIFF 初始化失敗：' + err);
+    alert('LIFF 初始化失敗');
   }
 }
 
 function formatLocalTime(iso){
   if(!iso) return "--";
   const d = new Date(iso);
+  if(isNaN(d.getTime())) return iso;
   return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
@@ -282,7 +286,6 @@ async function loadEventsList(){
     ALL_EVENTS.forEach(ev=>{
       const registeredTag = ev.IsRegistered ? '【✅ 已報名】' : '';
       const optionText = `${registeredTag} ${ev.Title} (${formatLocalTime(ev.Time)})`;
-      
       const opt = document.createElement('option');
       opt.value = ev.EventID;
       opt.textContent = optionText;
@@ -315,30 +318,45 @@ function selectEvent(eventId){
   document.getElementById('info-venue-name').textContent = ev.VenueName;
   document.getElementById('info-location').textContent = ev.Address;
   document.getElementById('info-map-link').href = ev.MapUrl;
-  document.getElementById('info-close-time').textContent = formatLocalTime(ev.CloseTime);
 
-  // ⭐ 時間邏輯判斷
-  const now = new Date().getTime();
-  const open = new Date(ev.OpenTime).getTime();
-  const close = new Date(ev.CloseTime).getTime();
+  // ⭐ 時間與來源邏輯判斷
+  const isSystemEvent = !ev.CreatorUID; // 若 CreatorUID 為空，則視為手動建立
+  const deadlineBox = document.getElementById('deadline-container');
   const tag = document.getElementById('time-status-tag');
   const regBtn = document.getElementById('btn-register');
 
-  if (now < open) {
-    tag.className = 'time-tag tag-closed';
-    tag.textContent = `🚫 尚未開放報名 (開放：${formatLocalTime(ev.OpenTime)})`;
-    regBtn.disabled = true;
-  } else if (now > close) {
-    tag.className = 'time-tag tag-closed';
-    tag.textContent = '❌ 報名已截止';
-    regBtn.disabled = true;
-  } else {
-    tag.className = 'time-tag tag-open';
-    tag.textContent = '✅ 開放報名中';
+  if (isSystemEvent) {
+    // 手動建立活動：隱藏截止時間與狀態標籤，預設允許報名
+    deadlineBox.style.display = 'none';
+    tag.style.display = 'none';
     regBtn.disabled = false;
+  } else {
+    // 網頁建立活動：顯示截止時間，判斷是否過期
+    deadlineBox.style.display = 'block';
+    tag.style.display = 'inline-block';
+    document.getElementById('info-close-time').textContent = formatLocalTime(ev.CloseTime);
+
+    const now = new Date().getTime();
+    const open = new Date(ev.OpenTime).getTime();
+    const close = new Date(ev.CloseTime).getTime();
+
+    if (now < open) {
+      tag.className = 'time-tag tag-closed';
+      tag.textContent = `🚫 尚未開放報名`;
+      regBtn.disabled = true;
+    } else if (now > close) {
+      tag.className = 'time-tag tag-closed';
+      tag.textContent = '❌ 報名已截止';
+      regBtn.disabled = true;
+    } else {
+      tag.className = 'time-tag tag-open';
+      tag.textContent = '✅ 開放報名中';
+      regBtn.disabled = false;
+    }
   }
 
   loadStatsAndStatus(eventId);
+  document.getElementById('activity-info').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function loadStatsAndStatus(eventId){
@@ -361,8 +379,14 @@ async function loadStatsAndStatus(eventId){
 function updateButtons(userStatus){
   const ev = ALL_EVENTS.find(e=>e.EventID===CURRENT_EVENT_ID);
   const now = new Date().getTime();
-  const open = new Date(ev.OpenTime).getTime();
-  const close = new Date(ev.CloseTime).getTime();
+  
+  // 基礎報名時間判斷
+  let canRegister = true;
+  if(ev && ev.CreatorUID){
+      const open = new Date(ev.OpenTime).getTime();
+      const close = new Date(ev.CloseTime).getTime();
+      canRegister = (now >= open && now <= close);
+  }
 
   if(userStatus && userStatus.Status==='Registered'){
     document.getElementById('btn-register').style.display='none';
@@ -371,8 +395,7 @@ function updateButtons(userStatus){
     document.getElementById('attendees-count').value = userStatus.Attendees_Count||1;
     document.getElementById('guest-names').value = userStatus.Guest_Names||'';
   } else {
-    // 只有在時間區間內才顯示報名按鈕
-    document.getElementById('btn-register').style.display = (now >= open && now <= close) ? 'inline-block' : 'none';
+    document.getElementById('btn-register').style.display = canRegister ? 'inline-block' : 'none';
     document.getElementById('btn-cancel').style.display='none';
     document.getElementById('btn-edit').style.display='none';
     document.getElementById('attendees-count').value = 1;
@@ -382,11 +405,10 @@ function updateButtons(userStatus){
 
 async function submitRegistration(action){
   if(!CURRENT_EVENT_ID) return;
-  
   const msg = document.getElementById('form-message');
   msg.style.display = 'block';
   msg.className = 'message';
-  msg.textContent = '⏳ 處理中，請稍候...';
+  msg.textContent = '⏳ 處理中...';
 
   const payload = {
     action,
@@ -400,14 +422,13 @@ async function submitRegistration(action){
   try {
     const res = await fetch(GAS_URL,{method:'POST',body:JSON.stringify(payload)});
     const data = await res.json();
-    
     msg.className = data.status==='success'?'message success':'message error';
     msg.textContent = data.message;
 
     if (data.status === 'success') {
       if (action === 'register' || action === 'cancel') {
-        msg.textContent = data.message + ' 視窗即將於 2 秒後關閉...';
-        setTimeout(() => { liff.closeWindow(); }, 2200);
+        msg.textContent += ' 視窗即將關閉...';
+        setTimeout(() => { liff.closeWindow(); }, 2000);
       } else {
         loadStatsAndStatus(CURRENT_EVENT_ID);
         loadEventsList();
@@ -415,7 +436,7 @@ async function submitRegistration(action){
     }
   } catch(err){
     msg.className = 'message error';
-    msg.textContent = '❌ 連線異常，請檢查網路。';
+    msg.textContent = '❌ 連線異常';
   }
 }
 
