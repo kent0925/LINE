@@ -118,12 +118,25 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn:active { transform: scale(0.96); }
+.btn:disabled { background: #cbd5e0; color: #718096; cursor: not-allowed; }
 
 .btn-register { background: var(--line-green); color: white; }
 .btn-cancel { background: #fee2e2; color: var(--accent-red); }
 .btn-edit { background: #e0f2fe; color: var(--accent-blue); }
 
 #form-actions { display: flex; gap: 4px; margin-top: 20px; }
+
+/* 狀態標籤樣式 */
+.time-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin-top: 10px;
+}
+.tag-closed { background: #fee2e2; color: #ef4444; }
+.tag-open { background: #dcfce7; color: #16a34a; }
 
 .stats-list {
   list-style: none;
@@ -192,10 +205,14 @@ input:focus, select:focus, textarea:focus {
   <div id="activity-info" class="info-card" style="display:none;">
     <h2 id="info-title">活動資訊</h2>
     <div style="font-size: 0.95rem; color: #4a5568;">
-      <p>🕒 <strong>時間：</strong><span id="info-time"></span></p>
+      <p>👤 <strong>主辦者：</strong><span id="info-creator"></span></p>
+      <p>🕒 <strong>活動時間：</strong><span id="info-time"></span></p>
       <p>🏠 <strong>場地：</strong><span id="info-venue-name"></span></p>
       <p>📍 <strong>地點：</strong><span id="info-location"></span> 
          <a id="info-map-link" href="#" target="_blank" style="color:var(--accent-blue); text-decoration:none; margin-left:8px;">🗺️ 地圖</a></p>
+      <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+      <p>⏳ <strong style="color:var(--accent-red);">報名截止：</strong><span id="info-close-time"></span></p>
+      <div id="time-status-tag" class="time-tag"></div>
     </div>
   </div>
 
@@ -229,8 +246,8 @@ input:focus, select:focus, textarea:focus {
 </div>
 
 <script>
-const GAS_URL='https://script.google.com/macros/s/AKfycbz4TwMhhZns3p2jc2tVTI376-6DU9CG8tkuRmL3KKcq_BmIuB2ySV2CKgaCc5eyS2vLnA/exec';
-const LIFF_ID='2008678090-aXTesgDK';
+const GAS_URL='你的_GAS_部署網址';
+const LIFF_ID='你的_LIFF_ID';
 let LINE_UID='', LINE_NICKNAME='', CURRENT_EVENT_ID=null, ALL_EVENTS=[];
 
 async function initializeLiff(){
@@ -248,6 +265,7 @@ async function initializeLiff(){
 }
 
 function formatLocalTime(iso){
+  if(!iso) return "--";
   const d = new Date(iso);
   return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
@@ -262,7 +280,6 @@ async function loadEventsList(){
     sel.innerHTML = '<option value="">-- 請選擇活動場次 --</option>';
 
     ALL_EVENTS.forEach(ev=>{
-      // ⭐ 這裡讀取與 GAS 統一的 IsRegistered
       const registeredTag = ev.IsRegistered ? '【✅ 已報名】' : '';
       const optionText = `${registeredTag} ${ev.Title} (${formatLocalTime(ev.Time)})`;
       
@@ -287,13 +304,40 @@ function selectEvent(eventId){
   const ev = ALL_EVENTS.find(e=>e.EventID===eventId);
   if(!ev) return;
   CURRENT_EVENT_ID = eventId;
+  
   document.getElementById('activity-info').style.display='block';
   document.getElementById('registration-form').style.display='block';
+  
+  // 填充基本資訊
   document.getElementById('info-title').textContent = ev.Title;
+  document.getElementById('info-creator').textContent = ev.CreatorName || "管理員";
   document.getElementById('info-time').textContent = formatLocalTime(ev.Time);
   document.getElementById('info-venue-name').textContent = ev.VenueName;
   document.getElementById('info-location').textContent = ev.Address;
   document.getElementById('info-map-link').href = ev.MapUrl;
+  document.getElementById('info-close-time').textContent = formatLocalTime(ev.CloseTime);
+
+  // ⭐ 時間邏輯判斷
+  const now = new Date().getTime();
+  const open = new Date(ev.OpenTime).getTime();
+  const close = new Date(ev.CloseTime).getTime();
+  const tag = document.getElementById('time-status-tag');
+  const regBtn = document.getElementById('btn-register');
+
+  if (now < open) {
+    tag.className = 'time-tag tag-closed';
+    tag.textContent = `🚫 尚未開放報名 (開放：${formatLocalTime(ev.OpenTime)})`;
+    regBtn.disabled = true;
+  } else if (now > close) {
+    tag.className = 'time-tag tag-closed';
+    tag.textContent = '❌ 報名已截止';
+    regBtn.disabled = true;
+  } else {
+    tag.className = 'time-tag tag-open';
+    tag.textContent = '✅ 開放報名中';
+    regBtn.disabled = false;
+  }
+
   loadStatsAndStatus(eventId);
 }
 
@@ -315,6 +359,11 @@ async function loadStatsAndStatus(eventId){
 }
 
 function updateButtons(userStatus){
+  const ev = ALL_EVENTS.find(e=>e.EventID===CURRENT_EVENT_ID);
+  const now = new Date().getTime();
+  const open = new Date(ev.OpenTime).getTime();
+  const close = new Date(ev.CloseTime).getTime();
+
   if(userStatus && userStatus.Status==='Registered'){
     document.getElementById('btn-register').style.display='none';
     document.getElementById('btn-cancel').style.display='inline-block';
@@ -322,7 +371,8 @@ function updateButtons(userStatus){
     document.getElementById('attendees-count').value = userStatus.Attendees_Count||1;
     document.getElementById('guest-names').value = userStatus.Guest_Names||'';
   } else {
-    document.getElementById('btn-register').style.display='inline-block';
+    // 只有在時間區間內才顯示報名按鈕
+    document.getElementById('btn-register').style.display = (now >= open && now <= close) ? 'inline-block' : 'none';
     document.getElementById('btn-cancel').style.display='none';
     document.getElementById('btn-edit').style.display='none';
     document.getElementById('attendees-count').value = 1;
@@ -355,12 +405,9 @@ async function submitRegistration(action){
     msg.textContent = data.message;
 
     if (data.status === 'success') {
-      // ⭐ 報名或取消成功後自動關閉視窗
       if (action === 'register' || action === 'cancel') {
         msg.textContent = data.message + ' 視窗即將於 2 秒後關閉...';
-        setTimeout(() => {
-          liff.closeWindow();
-        }, 2200);
+        setTimeout(() => { liff.closeWindow(); }, 2200);
       } else {
         loadStatsAndStatus(CURRENT_EVENT_ID);
         loadEventsList();
