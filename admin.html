@@ -1,78 +1,112 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>主辦者管理後台</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body { font-family: sans-serif; background: #eef2f3; padding: 20px; }
-    .box { background: white; padding: 20px; border-radius: 15px; max-width: 500px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; }
-    .btn { width: 100%; padding: 12px; background: #06C755; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理後台 - 活動發佈與管理</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+/* 樣式延用主題風格 */
+:root {
+  --line-green: #06C755;
+  --accent-red: #FF3B30;
+}
+body { font-family: sans-serif; background: #f4f7f6; padding: 15px; }
+.container { max-width: 500px; margin: auto; background: white; padding: 25px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+h1 { color: var(--line-green); text-align: center; }
+.form-group { margin-bottom: 15px; }
+label { display: block; margin-bottom: 5px; font-weight: bold; color: #4a5568; font-size: 0.9rem; }
+input { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; }
+.btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+.btn-submit { background: var(--line-green); color: white; }
+.event-item { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
+.del-btn { color: var(--accent-red); cursor: pointer; font-weight: bold; font-size: 0.9rem; padding: 5px 10px; border: 1px solid var(--accent-red); border-radius: 8px; }
+</style>
 </head>
 <body>
-<div class="box">
-  <h2>➕ 建立新活動</h2>
-  <input type="text" id="title" placeholder="活動名稱">
-  <label>活動時間</label><input type="datetime-local" id="time">
-  <label>報名開始</label><input type="datetime-local" id="open">
-  <label>報名截止</label><input type="datetime-local" id="close">
-  <input type="text" id="venue" placeholder="場地名稱">
-  <input type="text" id="address" placeholder="地址">
-  <button class="btn" onclick="create()">發佈活動</button>
 
-  <h2 style="margin-top:30px;">📋 我建立的活動</h2>
-  <div id="list">讀取中...</div>
+<div class="container">
+  <h1>🛠️ 建立新活動</h1>
+  <div class="form-group"><label>活動標題</label><input type="text" id="title" placeholder="例如：春季交流會"></div>
+  <div class="form-group"><label>活動時間</label><input type="datetime-local" id="time"></div>
+  <div class="form-group"><label>開放報名時間</label><input type="datetime-local" id="openTime"></div>
+  <div class="form-group"><label>截止報名時間</label><input type="datetime-local" id="closeTime"></div>
+  <div class="form-group"><label>場地名稱</label><input type="text" id="venue" placeholder="例如：台北辦公室"></div>
+  <div class="form-group"><label>完整地址</label><input type="text" id="address" placeholder="自動生成地圖連結"></div>
+  <button class="btn btn-submit" onclick="publishEvent()">發佈並公開</button>
+
+  <hr style="margin: 30px 0; border: 0; border-top: 2px dashed #eee;">
+
+  <h2>📋 我建立的活動管理</h2>
+  <div id="my-events-list">讀取中...</div>
 </div>
 
 <script>
-const GAS_URL = '你的GAS部署URL';
-const LIFF_ID = '你的管理員LIFF_ID';
-let ADMIN_UID, ADMIN_NAME;
+const GAS_URL='你的_GAS_部署網址';
+const LIFF_ID='你的_管理端_LIFF_ID';
+let ADMIN_UID='', ADMIN_NICKNAME='';
 
-async function init() {
+async function init(){
   await liff.init({ liffId: LIFF_ID });
-  if (!liff.isLoggedIn()) { liff.login(); return; }
-  const p = await liff.getProfile();
-  ADMIN_UID = p.userId; ADMIN_NAME = p.displayName;
+  if(!liff.isLoggedIn()){ liff.login(); return; }
+  const profile = await liff.getProfile();
+  ADMIN_UID = profile.userId;
+  ADMIN_NICKNAME = profile.displayName;
   loadMyEvents();
 }
 
-async function create() {
+async function publishEvent(){
   const payload = {
-    action: 'createEvent', adminUid: ADMIN_UID, adminNickname: ADMIN_NAME,
+    action: 'createEvent',
+    adminUid: ADMIN_UID,
+    adminNickname: ADMIN_NICKNAME,
     title: document.getElementById('title').value,
     time: document.getElementById('time').value,
-    openTime: document.getElementById('open').value,
-    closeTime: document.getElementById('close').value,
+    openTime: document.getElementById('openTime').value,
+    closeTime: document.getElementById('closeTime').value,
     venueName: document.getElementById('venue').value,
     address: document.getElementById('address').value
   };
-  await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-  alert('建立成功'); location.reload();
+
+  if(!payload.title || !payload.time) return alert('請填寫完整資訊');
+
+  const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+  const data = await res.json();
+  if(data.status === 'success'){
+    alert('發佈成功！');
+    location.reload();
+  }
 }
 
-async function loadMyEvents() {
+async function loadMyEvents(){
   const res = await fetch(`${GAS_URL}?action=getMyEvents&adminUid=${ADMIN_UID}`);
   const data = await res.json();
-  const div = document.getElementById('list');
-  div.innerHTML = '';
-  data.events.forEach(e => {
-    div.innerHTML += `
-      <div class="item">
-        <div><b>${e.Title}</b><br><small>${new Date(e.Time).toLocaleDateString()}</small></div>
-        <button onclick="del('${e.EventID}')" style="color:red; border:none; background:none; cursor:pointer;">🗑️ 刪除</button>
-      </div>`;
+  const list = document.getElementById('my-events-list');
+  list.innerHTML = '';
+  
+  if(data.events.length === 0) list.innerHTML = '<p style="color:#999; text-align:center;">目前沒有建立任何活動</p>';
+
+  data.events.forEach(ev => {
+    list.innerHTML += `
+      <div class="event-item">
+        <div>
+          <div style="font-weight:bold;">${ev.Title}</div>
+          <div style="font-size:0.8rem; color:#666;">📅 ${ev.Time.replace('T', ' ')}</div>
+        </div>
+        <div class="del-btn" onclick="deleteEvent('${ev.EventID}')">🗑️ 刪除</div>
+      </div>
+    `;
   });
 }
 
-async function del(id) {
-  if(!confirm('確定刪除？')) return;
-  await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteEvent', eventId: id, adminUid: ADMIN_UID }) });
-  loadMyEvents();
+async function deleteEvent(id){
+  if(!confirm('確定要刪除此活動嗎？這將會一併移除所有相關的報名資料！')) return;
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'deleteEvent', eventId: id, adminUid: ADMIN_UID })
+  });
+  const data = await res.json();
+  if(data.status === 'success') loadMyEvents();
 }
 
 init();
